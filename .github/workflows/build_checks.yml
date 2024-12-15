@@ -1,4 +1,4 @@
-name: Build_Checks
+name: Build Checks
 
 on:
   workflow_dispatch:
