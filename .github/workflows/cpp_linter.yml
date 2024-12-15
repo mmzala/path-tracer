@@ -1,0 +1,46 @@
+name: CPP Linter
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main ]
+    paths: [ '**.c', '**.cpp', '**.h', '**.hpp', '**.cxx', '**.hxx', '**.cc', '**.hh', '**CMakeLists.txt', '**.cmake' ]
+
+jobs:
+  cpp-linter:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      # Check out project
+
+      - name: Checkout Project
+        uses: actions/checkout@v4
+
+      # Run linter
+
+      - name: CPP-Linter
+        uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          version: 18
+          files-changed-only: true
+          verbosity: 'debug'
+          style: 'file'
+          ignore: 'external | build'
+          thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
+          tidy-review: true
+          passive-reviews: true
+          tidy-checks:
+            bugprone-*,
+            performance-*,
+            readability-*,
+            portability-*,
+            modernize-*,
+            clang-analyzer-*,
+            cppcoreguidelines-*
