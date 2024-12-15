@@ -16,8 +16,6 @@ jobs:
 
     env:
       OPTION_ARGS: -DWARNINGS_AS_ERRORS=ON
-      PRESET_PREFIX: ${{ matrix.platform == 'windows-latest' && 'x64' }}
-      PRESET_SUFFIX: 'Debug'
 
     steps:
       # Check out project
@@ -37,13 +35,10 @@ jobs:
           vulkan-components: Vulkan-Headers, Vulkan-Loader
           vulkan-use-cache: true
 
-      # Configure, Build and Test
+      # Setup database for linter
 
-      - name: Configure Project
-        run: cmake --preset ${{ env.PRESET_PREFIX }}-${{ env.PRESET_SUFFIX }} ${{ env.OPTION_ARGS }}
-
-      - name: Build Project
-        run: cmake --build build/${{ env.PRESET_PREFIX }}-${{ env.PRESET_SUFFIX }}
+      - name: Setup Database
+        run: cmake --preset x64-Debug ${{ env.OPTION_ARGS }}
 
       # Run linter
 
@@ -55,6 +50,7 @@ jobs:
         with:
           version: 18
           files-changed-only: true
+          database: build/x64-Debug/compile_commands.json
           verbosity: 'debug'
           style: 'file'
           ignore: 'external | build'
