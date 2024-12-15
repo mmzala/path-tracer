@@ -14,15 +14,40 @@ jobs:
       contents: read
       pull-requests: write
 
+    env:
+      OPTION_ARGS: -DWARNINGS_AS_ERRORS=ON
+      PRESET_PREFIX: ${{ matrix.platform == 'windows-latest' && 'x64' }}
+      PRESET_SUFFIX: 'Debug'
+
     steps:
       # Check out project
 
       - name: Checkout Project
         uses: actions/checkout@v4
 
+      # Install all dependencies
+
+      - name: Setup Ninja
+        uses: ashutoshvarma/setup-ninja@master
+
+      - name: Setup Vulkan SDK
+        uses: humbletim/setup-vulkan-sdk@v1.2.0
+        with:
+          vulkan-query-version: latest
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
+
+      # Configure, Build and Test
+
+      - name: Configure Project
+        run: cmake --preset ${{ env.PRESET_PREFIX }}-${{ env.PRESET_SUFFIX }} ${{ env.OPTION_ARGS }}
+
+      - name: Build Project
+        run: cmake --build build/${{ env.PRESET_PREFIX }}-${{ env.PRESET_SUFFIX }}
+
       # Run linter
 
-      - name: CPP-Linter
+      - name: CPP Linter
         uses: cpp-linter/cpp-linter-action@v2
         id: linter
         env:
@@ -34,8 +59,6 @@ jobs:
           style: 'file'
           ignore: 'external | build'
           thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
-          tidy-review: true
-          passive-reviews: true
           tidy-checks:
             bugprone-*,
             performance-*,
@@ -43,4 +66,6 @@ jobs:
             portability-*,
             modernize-*,
             clang-analyzer-*,
-            cppcoreguidelines-*
+            cppcoreguidelines-*,
+            
+            -modernize-use-trailing-return-type
