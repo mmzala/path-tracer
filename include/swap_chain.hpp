@@ -20,9 +20,9 @@ public:
     NON_COPYABLE(SwapChain);
     NON_MOVABLE(SwapChain);
 
-    vk::SwapchainKHR GetSwapChain() const { return _swapChain; }
-    vk::Image GetImage(uint32_t index) const { return _images[index]; }
-    vk::Format GetFormat() const { return _format; }
+    [[nodiscard]] vk::SwapchainKHR GetSwapChain() const { return _swapChain; }
+    [[nodiscard]] vk::Image GetImage(uint32_t index) const { return _images[index]; }
+    [[nodiscard]] vk::Format GetFormat() const { return _format; }
 
     static SupportDetails QuerySupport(vk::PhysicalDevice device, vk::SurfaceKHR surface);
 
@@ -30,9 +30,9 @@ private:
     void InitializeSwapChain(glm::uvec2 screenSize);
     void CleanUp();
     void InitializeImageViews();
-    vk::SurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats) const;
-    vk::PresentModeKHR ChoosePresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes) const;
-    vk::Extent2D ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, glm::uvec2 screenSize) const;
+    [[nodiscard]] vk::SurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats) const;
+    [[nodiscard]] vk::PresentModeKHR ChoosePresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes) const;
+    [[nodiscard]] vk::Extent2D ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, glm::uvec2 screenSize) const;
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     vk::SwapchainKHR _swapChain;

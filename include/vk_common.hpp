@@ -13,9 +13,9 @@ struct ImageLayoutTransitionState
 void VkCheckResult(vk::Result result, std::string_view message);
 void VkCheckResult(VkResult result, std::string_view message);
 
-bool VkHasStencilComponent(vk::Format format);
-ImageLayoutTransitionState VkGetImageLayoutTransitionSourceState(vk::ImageLayout sourceLayout);
-ImageLayoutTransitionState VkGetImageLayoutTransitionDestinationState(vk::ImageLayout destinationLayout);
+[[nodiscard]] bool VkHasStencilComponent(vk::Format format);
+[[nodiscard]] ImageLayoutTransitionState VkGetImageLayoutTransitionSourceState(vk::ImageLayout sourceLayout);
+[[nodiscard]] ImageLayoutTransitionState VkGetImageLayoutTransitionDestinationState(vk::ImageLayout destinationLayout);
 void VkInitializeImageMemoryBarrier(vk::ImageMemoryBarrier2& barrier, vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t numLayers = 1, uint32_t mipLevel = 0, uint32_t mipCount = 1, vk::ImageAspectFlagBits imageAspect = vk::ImageAspectFlagBits::eColor);
 void VkTransitionImageLayout(vk::CommandBuffer commandBuffer, vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t numLayers = 1, uint32_t mipLevel = 0, uint32_t mipCount = 1, vk::ImageAspectFlagBits imageAspect = vk::ImageAspectFlagBits::eColor);
 

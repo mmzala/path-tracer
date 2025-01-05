@@ -32,14 +32,14 @@ public:
     NON_COPYABLE(VulkanContext);
     NON_MOVABLE(VulkanContext);
 
-    vk::DispatchLoaderDynamic Dldi() const { return _dldi; }
-    vk::PhysicalDevice PhysicalDevice() const { return _physicalDevice; }
-    vk::Device Device() const { return _device; }
-    vk::Queue GraphicsQueue() const { return _graphicsQueue; }
-    vk::Queue PresentQueue() const { return _presentQueue; }
-    vk::SurfaceKHR Surface() const { return _surface; }
-    vk::CommandPool CommandPool() const { return _commandPool; }
-    const QueueFamilyIndices& QueueFamilies() const { return _queueFamilyIndices; }
+    [[nodiscard]] vk::DispatchLoaderDynamic Dldi() const { return _dldi; }
+    [[nodiscard]] vk::PhysicalDevice PhysicalDevice() const { return _physicalDevice; }
+    [[nodiscard]] vk::Device Device() const { return _device; }
+    [[nodiscard]] vk::Queue GraphicsQueue() const { return _graphicsQueue; }
+    [[nodiscard]] vk::Queue PresentQueue() const { return _presentQueue; }
+    [[nodiscard]] vk::SurfaceKHR Surface() const { return _surface; }
+    [[nodiscard]] vk::CommandPool CommandPool() const { return _commandPool; }
+    [[nodiscard]] const QueueFamilyIndices& QueueFamilies() const { return _queueFamilyIndices; }
 
 private:
     vk::Instance _instance;
