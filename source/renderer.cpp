@@ -31,12 +31,12 @@ void Renderer::Render()
 
     VkCheckResult(_vulkanContext->Device().resetFences(1, &_inFlightFences[_currentResourcesFrame]), "[VULKAN] Failed resetting fences!");
 
-    vk::CommandBuffer& commandBuffer = _commandBuffers[_currentResourcesFrame];
+    vk::CommandBuffer commandBuffer = _commandBuffers[_currentResourcesFrame];
     commandBuffer.reset();
 
     vk::CommandBufferBeginInfo commandBufferBeginInfo {};
     VkCheckResult(commandBuffer.begin(&commandBufferBeginInfo), "[VULKAN] Failed to begin recording command buffer!");
-    RecordCommands(commandBuffer);
+    RecordCommands(commandBuffer, swapChainImageIndex);
     commandBuffer.end();
 
     vk::Semaphore waitSemaphore = _imageAvailableSemaphores[_currentResourcesFrame];
@@ -65,9 +65,10 @@ void Renderer::Render()
     _currentResourcesFrame = (_currentResourcesFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer)
+void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex)
 {
-    // TODO: Commands go here!
+    VkTransitionImageLayout(commandBuffer, _swapChain->GetImage(swapChainImageIndex), _swapChain->GetFormat(),
+        vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR);
 }
 
 void Renderer::InitializeCommandBuffers()

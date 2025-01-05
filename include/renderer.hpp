@@ -19,7 +19,7 @@ public:
     void Render();
 
 private:
-    void RecordCommands(const vk::CommandBuffer& commandBuffer);
+    void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex);
     void InitializeCommandBuffers();
     void InitializeSynchronizationObjects();
 

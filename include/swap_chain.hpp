@@ -21,6 +21,8 @@ public:
     NON_MOVABLE(SwapChain);
 
     vk::SwapchainKHR GetSwapChain() const { return _swapChain; }
+    vk::Image GetImage(uint32_t index) const { return _images[index]; }
+    vk::Format GetFormat() const { return _format; }
 
     static SupportDetails QuerySupport(vk::PhysicalDevice device, vk::SurfaceKHR surface);
 

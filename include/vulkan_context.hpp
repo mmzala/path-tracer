@@ -71,6 +71,7 @@ private:
         VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
         VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
         VK_KHR_MAINTENANCE3_EXTENSION_NAME,
+        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
     };
 
     void InitializeInstance(const VulkanInitInfo& initInfo);
