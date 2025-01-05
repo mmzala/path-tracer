@@ -1,6 +1,6 @@
 #include "vk_common.hpp"
-#include <unordered_map>
 #include <spdlog/spdlog.h>
+#include <unordered_map>
 
 void VkCheckResult(vk::Result result, std::string_view message)
 {
@@ -51,7 +51,7 @@ ImageLayoutTransitionState VkGetImageLayoutTransitionSourceState(vk::ImageLayout
     if (it == sourceStateMap.end())
     {
         spdlog::error("[VULKAN] Unsupported source state for image layout transition!");
-        return ImageLayoutTransitionState{};
+        return ImageLayoutTransitionState {};
     }
 
     return it->second;
@@ -87,7 +87,7 @@ ImageLayoutTransitionState VkGetImageLayoutTransitionDestinationState(vk::ImageL
     if (it == destinationStateMap.end())
     {
         spdlog::error("[VULKAN] Unsupported destination state for image layout transition!");
-        return ImageLayoutTransitionState{};
+        return ImageLayoutTransitionState {};
     }
 
     return it->second;

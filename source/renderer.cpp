@@ -5,7 +5,7 @@
 Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext> vulkanContext)
     : _vulkanContext(vulkanContext)
 {
-    _swapChain = std::make_unique<SwapChain>(vulkanContext, glm::uvec2{ initInfo.width, initInfo.height });
+    _swapChain = std::make_unique<SwapChain>(vulkanContext, glm::uvec2 { initInfo.width, initInfo.height });
     InitializeCommandBuffers();
     InitializeSynchronizationObjects();
 }
@@ -23,11 +23,13 @@ Renderer::~Renderer()
 void Renderer::Render()
 {
     VkCheckResult(_vulkanContext->Device().waitForFences(1, &_inFlightFences[_currentResourcesFrame], vk::True,
-        std::numeric_limits<uint64_t>::max()), "[VULKAN] Failed waiting on in flight fence!");
+                      std::numeric_limits<uint64_t>::max()),
+        "[VULKAN] Failed waiting on in flight fence!");
 
     uint32_t swapChainImageIndex {};
     VkCheckResult(_vulkanContext->Device().acquireNextImageKHR(_swapChain->GetSwapChain(), std::numeric_limits<uint64_t>::max(),
-            _imageAvailableSemaphores[_currentResourcesFrame], nullptr, &swapChainImageIndex), "[VULKAN] Failed to acquire swap chain image!");
+                      _imageAvailableSemaphores[_currentResourcesFrame], nullptr, &swapChainImageIndex),
+        "[VULKAN] Failed to acquire swap chain image!");
 
     VkCheckResult(_vulkanContext->Device().resetFences(1, &_inFlightFences[_currentResourcesFrame]), "[VULKAN] Failed resetting fences!");
 
@@ -43,7 +45,7 @@ void Renderer::Render()
     vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
     vk::Semaphore signalSemaphore = _renderFinishedSemaphores[_currentResourcesFrame];
 
-    vk::SubmitInfo submitInfo{};
+    vk::SubmitInfo submitInfo {};
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = &waitSemaphore;
     submitInfo.pWaitDstStageMask = &waitStage;
@@ -54,7 +56,7 @@ void Renderer::Render()
     VkCheckResult(_vulkanContext->GraphicsQueue().submit(1, &submitInfo, _inFlightFences[_currentResourcesFrame]), "[VULKAN] Failed submitting to graphics queue!");
 
     vk::SwapchainKHR swapchain = _swapChain->GetSwapChain();
-    vk::PresentInfoKHR presentInfo{};
+    vk::PresentInfoKHR presentInfo {};
     presentInfo.waitSemaphoreCount = 1;
     presentInfo.pWaitSemaphores = &signalSemaphore;
     presentInfo.swapchainCount = 1;
