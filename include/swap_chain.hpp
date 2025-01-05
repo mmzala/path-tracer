@@ -20,6 +20,8 @@ public:
     NON_COPYABLE(SwapChain);
     NON_MOVABLE(SwapChain);
 
+    vk::SwapchainKHR GetSwapChain() const { return _swapChain; }
+
     static SupportDetails QuerySupport(vk::PhysicalDevice device, vk::SurfaceKHR surface);
 
 private:

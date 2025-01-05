@@ -35,6 +35,8 @@ public:
     vk::DispatchLoaderDynamic Dldi() const { return _dldi; }
     vk::PhysicalDevice PhysicalDevice() const { return _physicalDevice; }
     vk::Device Device() const { return _device; }
+    vk::Queue GraphicsQueue() const { return _graphicsQueue; }
+    vk::Queue PresentQueue() const { return _presentQueue; }
     vk::SurfaceKHR Surface() const { return _surface; }
     vk::CommandPool CommandPool() const { return _commandPool; }
     const QueueFamilyIndices& QueueFamilies() const { return _queueFamilyIndices; }

@@ -85,4 +85,6 @@ void Application::MainLoopOnce()
             break;
         }
     }
+
+    _renderer->Render();
 }

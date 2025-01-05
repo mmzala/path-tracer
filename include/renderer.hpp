@@ -16,7 +16,10 @@ public:
     NON_COPYABLE(Renderer);
     NON_MOVABLE(Renderer);
 
+    void Render();
+
 private:
+    void RecordCommands(const vk::CommandBuffer& commandBuffer);
     void InitializeCommandBuffers();
     void InitializeSynchronizationObjects();
 
@@ -26,4 +29,6 @@ private:
     std::array<vk::Semaphore, MAX_FRAMES_IN_FLIGHT> _imageAvailableSemaphores;
     std::array<vk::Semaphore, MAX_FRAMES_IN_FLIGHT> _renderFinishedSemaphores;
     std::array<vk::Fence, MAX_FRAMES_IN_FLIGHT> _inFlightFences;
+
+    uint32_t _currentResourcesFrame = 0;
 };
