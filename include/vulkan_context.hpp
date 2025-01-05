@@ -32,6 +32,9 @@ public:
     NON_COPYABLE(VulkanContext);
     NON_MOVABLE(VulkanContext);
 
+    vk::Device Device() const { return _device; }
+    vk::CommandPool CommandPool() const { return _commandPool; }
+
 private:
     vk::Instance _instance;
     vk::DispatchLoaderDynamic _dldi;

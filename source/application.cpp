@@ -5,6 +5,7 @@
 #define SDL_DISABLE_ANALYZE_MACROS
 
 #include "vulkan_context.hpp"
+#include "renderer.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <spdlog/spdlog.h>
@@ -53,7 +54,8 @@ Application::Application()
         return vk::SurfaceKHR(surface);
     };
 
-    _vulkanContext = std::make_unique<VulkanContext>(vulkanInfo);
+    _vulkanContext = std::make_shared<VulkanContext>(vulkanInfo);
+    _renderer = std::make_unique<Renderer>(_vulkanContext);
 }
 
 Application::~Application()

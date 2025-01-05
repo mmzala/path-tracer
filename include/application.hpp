@@ -3,6 +3,7 @@
 #include "common.hpp"
 
 class VulkanContext;
+class Renderer;
 class SDL_Window;
 
 class Application
@@ -18,7 +19,8 @@ public:
 private:
     void MainLoopOnce();
 
-    std::unique_ptr<VulkanContext> _vulkanContext;
+    std::shared_ptr<VulkanContext> _vulkanContext;
+    std::unique_ptr<Renderer> _renderer;
     SDL_Window* _window = nullptr;
     bool _exitRequested = false;
 };
