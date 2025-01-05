@@ -53,6 +53,14 @@ private:
 
     const std::vector<const char*> _deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+        VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+        VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
+        VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+        VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+        VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
+        VK_KHR_MAINTENANCE3_EXTENSION_NAME,
     };
 
     void InitializeInstance(const VulkanInitInfo& initInfo);
@@ -61,7 +69,7 @@ private:
     void InitializeDevice();
     void InitializeVMA();
     [[nodiscard]] bool AreValidationLayersSupported() const;
-    [[nodiscard]] std::vector<const char*> GetRequiredExtensions(const VulkanInitInfo& initInfo) const;
+    [[nodiscard]] std::vector<const char*> GetRequiredInstanceExtensions(const VulkanInitInfo& initInfo) const;
     [[nodiscard]] uint32_t RateDeviceSuitability(const vk::PhysicalDevice& deviceToRate) const;
     [[nodiscard]] bool AreExtensionsSupported(const vk::PhysicalDevice& deviceToCheckSupport) const;
 };

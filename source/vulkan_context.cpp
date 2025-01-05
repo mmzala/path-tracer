@@ -132,7 +132,7 @@ void VulkanContext::InitializeInstance(const VulkanInitInfo& initInfo)
     appInfo.engineVersion = vk::makeApiVersion(0, 1, 0, 0);
     appInfo.apiVersion = vk::makeApiVersion(0, 1, 3, 0);
 
-    auto extensions = GetRequiredExtensions(initInfo);
+    auto extensions = GetRequiredInstanceExtensions(initInfo);
 
     vk::InstanceCreateInfo instanceInfo {};
     instanceInfo.flags = vk::InstanceCreateFlags {};
@@ -274,7 +274,7 @@ bool VulkanContext::AreValidationLayersSupported() const
     return result;
 }
 
-std::vector<const char*> VulkanContext::GetRequiredExtensions(const VulkanInitInfo& initInfo) const
+std::vector<const char*> VulkanContext::GetRequiredInstanceExtensions(const VulkanInitInfo& initInfo) const
 {
     std::vector<const char*> extensions(initInfo.extensions, initInfo.extensions + initInfo.extensionCount);
     if (_validationLayersEnabled)
@@ -295,21 +295,19 @@ uint32_t VulkanContext::RateDeviceSuitability(const vk::PhysicalDevice& deviceTo
 
     QueueFamilyIndices familyIndices = QueueFamilyIndices::FindQueueFamilies(deviceToRate, _surface);
 
-    uint32_t score = 0;
-
-    // Failed if graphics family queue is not supported.
+    // Failed if graphics family queue is not supported
     if (!familyIndices.IsComplete())
     {
         return 0;
     }
 
-    // Failed if no extensions are supported.
+    // Failed if the extensions needed are not supported
     if (!AreExtensionsSupported(deviceToRate))
     {
         return 0;
     }
 
-    // Check support for swap chain.
+    // Check support for swap chain
     SwapChain::SupportDetails swapChainSupportDetails = SwapChain::QuerySupport(deviceToRate, _surface);
     bool swapChainUnsupported = swapChainSupportDetails.formats.empty() || swapChainSupportDetails.presentModes.empty();
     if (swapChainUnsupported)
@@ -317,13 +315,15 @@ uint32_t VulkanContext::RateDeviceSuitability(const vk::PhysicalDevice& deviceTo
         return 0;
     }
 
-    // Favor discrete GPUs above all else.
+    uint32_t score = 0;
+
+    // Favor discrete GPUs above all else
     if (deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
     {
         score += 50000;
     }
 
-    // Slightly favor integrated GPUs.
+    // Slightly favor integrated GPUs
     if (deviceProperties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu)
     {
         score += 20000;
