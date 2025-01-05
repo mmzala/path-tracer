@@ -39,6 +39,7 @@ private:
     vk::Device _device;
     vk::Queue _graphicsQueue;
     vk::Queue _presentQueue;
+    vk::CommandPool _commandPool;
     QueueFamilyIndices _queueFamilyIndices;
     VmaAllocator _vmaAllocator;
 
@@ -67,6 +68,7 @@ private:
     void InizializeValidationLayers();
     void InitializePhysicalDevice();
     void InitializeDevice();
+    void InitializeCommandPool();
     void InitializeVMA();
     [[nodiscard]] bool AreValidationLayersSupported() const;
     [[nodiscard]] std::vector<const char*> GetRequiredInstanceExtensions(const VulkanInitInfo& initInfo) const;

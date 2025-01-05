@@ -106,7 +106,7 @@ VulkanContext::VulkanContext(const VulkanInitInfo& initInfo)
 
     InitializePhysicalDevice();
     InitializeDevice();
-
+    InitializeCommandPool();
     InitializeVMA();
 }
 
@@ -244,6 +244,15 @@ void VulkanContext::InitializeDevice()
 
     _device.getQueue(_queueFamilyIndices.graphicsFamily.value(), 0, &_graphicsQueue);
     _device.getQueue(_queueFamilyIndices.presentFamily.value(), 0, &_presentQueue);
+}
+
+void VulkanContext::InitializeCommandPool()
+{
+    vk::CommandPoolCreateInfo commandPoolCreateInfo {};
+    commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+    commandPoolCreateInfo.queueFamilyIndex = _queueFamilyIndices.graphicsFamily.value();
+
+    VkCheckResult(_device.createCommandPool(&commandPoolCreateInfo, nullptr, &_commandPool), "[VULKAN] Failed creating command pool!");
 }
 
 void VulkanContext::InitializeVMA()
