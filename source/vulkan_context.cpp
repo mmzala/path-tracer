@@ -97,8 +97,8 @@ QueueFamilyIndices QueueFamilyIndices::FindQueueFamilies(vk::PhysicalDevice devi
 }
 
 VulkanContext::VulkanContext(const VulkanInitInfo& initInfo)
-    : _validationLayersEnabled(AreValidationLayersSupported())
 {
+    _validationLayersEnabled = AreValidationLayersSupported();
     spdlog::info("[VULKAN] Validation layers enabled: {}", _validationLayersEnabled);
 
     InitializeInstance(initInfo);
