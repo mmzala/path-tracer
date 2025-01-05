@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include <optional>
+#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 #include "common.hpp"
 
@@ -39,6 +40,7 @@ private:
     vk::Queue _graphicsQueue;
     vk::Queue _presentQueue;
     QueueFamilyIndices _queueFamilyIndices;
+    VmaAllocator _vmaAllocator;
 
     vk::SurfaceKHR _surface;
 
@@ -57,6 +59,7 @@ private:
     void InizializeValidationLayers();
     void InitializePhysicalDevice();
     void InitializeDevice();
+    void InitializeVMA();
     [[nodiscard]] bool AreValidationLayersSupported() const;
     [[nodiscard]] std::vector<const char*> GetRequiredExtensions(const VulkanInitInfo& initInfo) const;
     [[nodiscard]] uint32_t RateDeviceSuitability(const vk::PhysicalDevice& deviceToRate) const;

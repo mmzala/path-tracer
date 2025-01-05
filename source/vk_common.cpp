@@ -12,3 +12,8 @@ void VkCheckResult(vk::Result result, std::string_view message)
 
     abort();
 }
+
+void VkCheckResult(VkResult result, std::string_view message)
+{
+    VkCheckResult(static_cast<vk::Result>(result), message);
+}

@@ -97,7 +97,7 @@ QueueFamilyIndices QueueFamilyIndices::FindQueueFamilies(vk::PhysicalDevice devi
 VulkanContext::VulkanContext(const VulkanInitInfo& initInfo)
 {
     _validationLayersEnabled = AreValidationLayersSupported();
-    spdlog::info("[VULKAN] Validation layers enabled: {}]", _validationLayersEnabled);
+    spdlog::info("[VULKAN] Validation layers enabled: {}", _validationLayersEnabled);
 
     InitializeInstance(initInfo);
     _dldi = vk::DispatchLoaderDynamic { _instance, vkGetInstanceProcAddr, _device, vkGetDeviceProcAddr };
@@ -105,6 +105,9 @@ VulkanContext::VulkanContext(const VulkanInitInfo& initInfo)
     _surface = initInfo.retrieveSurface(_instance);
 
     InitializePhysicalDevice();
+    InitializeDevice();
+
+    InitializeVMA();
 }
 
 VulkanContext::~VulkanContext()
@@ -114,6 +117,9 @@ VulkanContext::~VulkanContext()
         _instance.destroyDebugUtilsMessengerEXT(_debugMessenger, nullptr, _dldi);
     }
 
+    vmaDestroyAllocator(_vmaAllocator);
+    _instance.destroy(_surface);
+    _device.destroy();
     _instance.destroy();
 }
 
@@ -240,6 +246,21 @@ void VulkanContext::InitializeDevice()
     _device.getQueue(_queueFamilyIndices.presentFamily.value(), 0, &_presentQueue);
 }
 
+void VulkanContext::InitializeVMA()
+{
+    VmaVulkanFunctions vulkanFunctions = {};
+    vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+    vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+
+    VmaAllocatorCreateInfo vmaAllocatorCreateInfo {};
+    vmaAllocatorCreateInfo.physicalDevice = _physicalDevice;
+    vmaAllocatorCreateInfo.device = _device;
+    vmaAllocatorCreateInfo.instance = _instance;
+    vmaAllocatorCreateInfo.vulkanApiVersion = vk::makeApiVersion(0, 1, 3, 0);
+    vmaAllocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+    VkCheckResult(vmaCreateAllocator(&vmaAllocatorCreateInfo, &_vmaAllocator), "[VULKAN] Failed creating VMA allocator!");
+}
+
 bool VulkanContext::AreValidationLayersSupported() const
 {
     std::vector<vk::LayerProperties> availableLayers = vk::enumerateInstanceLayerProperties();
@@ -318,7 +339,9 @@ bool VulkanContext::AreExtensionsSupported(const vk::PhysicalDevice& deviceToChe
     std::vector<vk::ExtensionProperties> availableExtensions = deviceToCheckSupport.enumerateDeviceExtensionProperties();
     std::set<std::string> requiredExtensions { _deviceExtensions.begin(), _deviceExtensions.end() };
     for (const auto& extension : availableExtensions)
+    {
         requiredExtensions.erase(extension.extensionName);
+    }
 
     return requiredExtensions.empty();
 }
