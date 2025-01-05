@@ -72,7 +72,9 @@ QueueFamilyIndices QueueFamilyIndices::FindQueueFamilies(vk::PhysicalDevice devi
     for (size_t i = 0; i < queueFamilies.size(); ++i)
     {
         if (queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics)
+        {
             indices.graphicsFamily = i;
+        }
 
         if (!indices.presentFamily.has_value())
         {
@@ -95,8 +97,8 @@ QueueFamilyIndices QueueFamilyIndices::FindQueueFamilies(vk::PhysicalDevice devi
 }
 
 VulkanContext::VulkanContext(const VulkanInitInfo& initInfo)
+    : _validationLayersEnabled(AreValidationLayersSupported())
 {
-    _validationLayersEnabled = AreValidationLayersSupported();
     spdlog::info("[VULKAN] Validation layers enabled: {}", _validationLayersEnabled);
 
     InitializeInstance(initInfo);
