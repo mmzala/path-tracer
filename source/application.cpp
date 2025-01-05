@@ -55,7 +55,7 @@ Application::Application()
     };
 
     _vulkanContext = std::make_shared<VulkanContext>(vulkanInfo);
-    _renderer = std::make_unique<Renderer>(_vulkanContext);
+    _renderer = std::make_unique<Renderer>(vulkanInfo, _vulkanContext);
 }
 
 Application::~Application()

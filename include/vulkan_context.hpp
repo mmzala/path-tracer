@@ -32,8 +32,12 @@ public:
     NON_COPYABLE(VulkanContext);
     NON_MOVABLE(VulkanContext);
 
+    vk::DispatchLoaderDynamic Dldi() const { return _dldi; }
+    vk::PhysicalDevice PhysicalDevice() const { return _physicalDevice; }
     vk::Device Device() const { return _device; }
+    vk::SurfaceKHR Surface() const { return _surface; }
     vk::CommandPool CommandPool() const { return _commandPool; }
+    const QueueFamilyIndices& QueueFamilies() const { return _queueFamilyIndices; }
 
 private:
     vk::Instance _instance;

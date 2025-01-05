@@ -1,9 +1,11 @@
 #include "renderer.hpp"
+#include "swap_chain.hpp"
 #include "vulkan_context.hpp"
 
-Renderer::Renderer(std::shared_ptr<VulkanContext> vulkanContext)
+Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext> vulkanContext)
     : _vulkanContext(vulkanContext)
 {
+    _swapChain = std::make_unique<SwapChain>(vulkanContext, glm::uvec2{ initInfo.width, initInfo.height });
     InitializeCommandBuffers();
     InitializeSynchronizationObjects();
 }
