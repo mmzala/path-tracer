@@ -1,6 +1,7 @@
 #include "renderer.hpp"
 #include "swap_chain.hpp"
 #include "vulkan_context.hpp"
+#include "gpu_resources.hpp"
 
 Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext> vulkanContext)
     : _vulkanContext(vulkanContext)
@@ -8,6 +9,8 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext
     _swapChain = std::make_unique<SwapChain>(vulkanContext, glm::uvec2 { initInfo.width, initInfo.height });
     InitializeCommandBuffers();
     InitializeSynchronizationObjects();
+
+    InitializeTriangle();
 }
 
 Renderer::~Renderer()
@@ -96,4 +99,38 @@ void Renderer::InitializeSynchronizationObjects()
         VkCheckResult(_vulkanContext->Device().createSemaphore(&semaphoreCreateInfo, nullptr, &_renderFinishedSemaphores[i]), errorMsg);
         VkCheckResult(_vulkanContext->Device().createFence(&fenceCreateInfo, nullptr, &_inFlightFences[i]), errorMsg);
     }
+}
+
+void Renderer::InitializeTriangle()
+{
+    const std::vector<Vertex> vertices =
+    {
+        { { 1.0f, 1.0f, 0.0f } },
+        { { -1.0f, 1.0f, 0.0f } },
+        { { 0.0f, -1.0f, 0.0f } }
+    };
+
+    const std::vector<uint32_t> indices = { 0, 1, 2 };
+
+    // TODO: Upload to GPU friendly memory
+
+    BufferCreation vertexBufferCreation {};
+    vertexBufferCreation.SetName("Vertex Buffer")
+        .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
+        .SetIsMappable(true)
+        .SetSize(sizeof(Vertex) * vertices.size());
+
+    _vertexBuffer = std::make_unique<Buffer>(vertexBufferCreation, _vulkanContext);
+    memcpy(_vertexBuffer->mappedPtr, vertices.data(), sizeof(Vertex) * vertices.size());
+
+    BufferCreation indexBufferCreation {};
+    indexBufferCreation.SetName("Index Buffer")
+        .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
+        .SetIsMappable(true)
+        .SetSize(sizeof(uint32_t) * indices.size());
+
+    _indexBuffer = std::make_unique<Buffer>(indexBufferCreation, _vulkanContext);
+    memcpy(_indexBuffer->mappedPtr, indices.data(), sizeof(uint32_t) * indices.size());
 }
