@@ -14,7 +14,7 @@ public:
     NON_MOVABLE(SingleTimeCommands);
     NON_COPYABLE(SingleTimeCommands);
 
-    void Record(const std::function<void(vk::CommandBuffer, std::shared_ptr<VulkanContext>)>& commands) const;
+    void Record(const std::function<void(vk::CommandBuffer)>& commands) const;
     void Submit();
 
 private:

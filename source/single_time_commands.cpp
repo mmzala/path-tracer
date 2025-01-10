@@ -29,9 +29,9 @@ SingleTimeCommands::~SingleTimeCommands()
     _vulkanContext->Device().destroy(_fence);
 }
 
-void SingleTimeCommands::Record(const std::function<void(vk::CommandBuffer, std::shared_ptr<VulkanContext>)>& commands) const
+void SingleTimeCommands::Record(const std::function<void(vk::CommandBuffer)>& commands) const
 {
-    commands(_commandBuffer, _vulkanContext);
+    commands(_commandBuffer);
 }
 
 void SingleTimeCommands::Submit()

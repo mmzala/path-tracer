@@ -40,6 +40,7 @@ private:
 
     void InitializeTriangle();
     void InitializeBLAS();
+    void InitializeTLAS();
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     std::unique_ptr<SwapChain> _swapChain;
@@ -55,4 +56,5 @@ private:
     std::unique_ptr<Buffer> _transformBuffer;
 
     AccelerationStructure _blas{};
+    AccelerationStructure _tlas{};
 };
