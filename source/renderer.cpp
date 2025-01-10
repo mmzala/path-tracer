@@ -2,6 +2,7 @@
 #include "swap_chain.hpp"
 #include "vulkan_context.hpp"
 #include "gpu_resources.hpp"
+#include "single_time_commands.hpp"
 
 Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext> vulkanContext)
     : _vulkanContext(vulkanContext)
@@ -11,6 +12,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext
     InitializeSynchronizationObjects();
 
     InitializeTriangle();
+    InitializeBLAS();
 }
 
 Renderer::~Renderer()
@@ -112,6 +114,14 @@ void Renderer::InitializeTriangle()
 
     const std::vector<uint32_t> indices = { 0, 1, 2 };
 
+    const VkTransformMatrixKHR transformMatrix =
+    {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f
+    };
+
+
     // TODO: Upload to GPU friendly memory
 
     BufferCreation vertexBufferCreation {};
@@ -133,4 +143,92 @@ void Renderer::InitializeTriangle()
 
     _indexBuffer = std::make_unique<Buffer>(indexBufferCreation, _vulkanContext);
     memcpy(_indexBuffer->mappedPtr, indices.data(), sizeof(uint32_t) * indices.size());
+
+    BufferCreation transformBufferCreation {};
+    transformBufferCreation.SetName("Transform Buffer")
+        .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
+        .SetIsMappable(true)
+        .SetSize(sizeof(uint32_t) * indices.size());
+
+    _transformBuffer = std::make_unique<Buffer>(transformBufferCreation, _vulkanContext);
+    memcpy(_transformBuffer->mappedPtr, &transformMatrix, sizeof(VkTransformMatrixKHR));
+}
+
+void Renderer::InitializeBLAS()
+{
+    vk::DeviceOrHostAddressConstKHR vertexBufferDeviceAddress {};
+    vk::DeviceOrHostAddressConstKHR indexBufferDeviceAddress {};
+    vk::DeviceOrHostAddressConstKHR transformBufferDeviceAddress {};
+
+    vertexBufferDeviceAddress.deviceAddress = _vulkanContext->Device().getBufferAddress(_vertexBuffer->buffer);
+    indexBufferDeviceAddress.deviceAddress = _vulkanContext->Device().getBufferAddress(_indexBuffer->buffer);
+    transformBufferDeviceAddress.deviceAddress = _vulkanContext->Device().getBufferAddress(_transformBuffer->buffer);
+
+    vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData {};
+    trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
+    trianglesData.vertexData = vertexBufferDeviceAddress;
+    trianglesData.vertexStride = sizeof(Vertex);
+    trianglesData.maxVertex = 0;
+    trianglesData.indexType = vk::IndexType::eUint32;
+    trianglesData.indexData = indexBufferDeviceAddress;
+    trianglesData.transformData = transformBufferDeviceAddress;
+
+    vk::AccelerationStructureGeometryKHR accelerationStructureGeometry{};
+    accelerationStructureGeometry.flags=vk::GeometryFlagBitsKHR::eOpaque;
+    accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eTriangles;
+    accelerationStructureGeometry.geometry.triangles = trianglesData;
+
+    vk::AccelerationStructureBuildGeometryInfoKHR buildInfo{};
+    buildInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
+    buildInfo.flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
+    buildInfo.mode = vk::BuildAccelerationStructureModeKHR::eBuild;
+    buildInfo.srcAccelerationStructure = nullptr;
+    buildInfo.dstAccelerationStructure = nullptr;
+    buildInfo.geometryCount = 1;
+    buildInfo.pGeometries = &accelerationStructureGeometry;
+    buildInfo.scratchData = {};
+
+    vk::AccelerationStructureBuildSizesInfoKHR buildSizesInfo = _vulkanContext->Device().getAccelerationStructureBuildSizesKHR(
+        vk::AccelerationStructureBuildTypeKHR::eDevice, buildInfo, 1, _vulkanContext->Dldi());
+
+    BufferCreation structureBufferCreation {};
+    structureBufferCreation.SetName("BLAS Structure Buffer")
+        .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+        .SetIsMappable(false)
+        .SetSize(buildSizesInfo.accelerationStructureSize);
+    _blas.structureBuffer = std::make_unique<Buffer>(structureBufferCreation, _vulkanContext);
+
+    BufferCreation scratchBufferCreation {};
+    scratchBufferCreation.SetName("BLAS Scratch Buffer")
+    .SetUsageFlags(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+        .SetIsMappable(false)
+        .SetSize(buildSizesInfo.buildScratchSize);
+    _blas.scratchBuffer = std::make_unique<Buffer>(scratchBufferCreation, _vulkanContext);
+
+    vk::AccelerationStructureCreateInfoKHR createInfo {};
+    createInfo.buffer= _blas.structureBuffer->buffer;
+    createInfo.offset = 0;
+    createInfo.size = buildSizesInfo.accelerationStructureSize;
+    createInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
+    _blas.vkStructure = _vulkanContext->Device().createAccelerationStructureKHR(createInfo, nullptr, _vulkanContext->Dldi());
+
+    buildInfo.dstAccelerationStructure = _blas.vkStructure;
+    buildInfo.scratchData.deviceAddress = _vulkanContext->Device().getBufferAddress(_blas.scratchBuffer->buffer);
+
+    vk::AccelerationStructureBuildRangeInfoKHR buildRangeInfo {};
+    buildRangeInfo.primitiveCount = 1;
+    buildRangeInfo.primitiveOffset = 0;
+    buildRangeInfo.firstVertex = 0;
+    buildRangeInfo.transformOffset = 0;
+    std::vector<vk::AccelerationStructureBuildRangeInfoKHR*> accelerationBuildStructureRangeInfos = { &buildRangeInfo };
+
+    SingleTimeCommands singleTimeCommands{ _vulkanContext };
+    singleTimeCommands.Record([buildInfo, accelerationBuildStructureRangeInfos](vk::CommandBuffer commandBuffer, std::shared_ptr<VulkanContext> vulkanContext)
+    {
+        commandBuffer.buildAccelerationStructuresKHR(1, &buildInfo, accelerationBuildStructureRangeInfos.data(), vulkanContext->Dldi());
+    });
+    singleTimeCommands.Submit();
 }

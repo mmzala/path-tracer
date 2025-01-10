@@ -216,7 +216,11 @@ void VulkanContext::InitializeDevice()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features, vk::PhysicalDeviceBufferDeviceAddressFeatures> structureChain;
+    vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features,
+        vk::PhysicalDeviceBufferDeviceAddressFeatures, vk::PhysicalDeviceAccelerationStructureFeaturesKHR> structureChain;
+
+    auto& accelerationStructuresFeatures = structureChain.get<vk::PhysicalDeviceAccelerationStructureFeaturesKHR>();
+    accelerationStructuresFeatures.accelerationStructure = true;
 
     auto& deviceAddressFeatures = structureChain.get<vk::PhysicalDeviceBufferDeviceAddressFeatures>();
     deviceAddressFeatures.bufferDeviceAddress = true;

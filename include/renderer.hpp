@@ -26,11 +26,20 @@ private:
         glm::vec3 position;
     };
 
+    struct AccelerationStructure
+    {
+        vk::AccelerationStructureKHR vkStructure;
+        std::unique_ptr<Buffer> structureBuffer;
+        std::unique_ptr<Buffer> scratchBuffer;
+        std::unique_ptr<Buffer> instancesBuffer;
+    };
+
     void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex);
     void InitializeCommandBuffers();
     void InitializeSynchronizationObjects();
 
     void InitializeTriangle();
+    void InitializeBLAS();
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     std::unique_ptr<SwapChain> _swapChain;
@@ -43,4 +52,7 @@ private:
 
     std::unique_ptr<Buffer> _vertexBuffer;
     std::unique_ptr<Buffer> _indexBuffer;
+    std::unique_ptr<Buffer> _transformBuffer;
+
+    AccelerationStructure _blas{};
 };
