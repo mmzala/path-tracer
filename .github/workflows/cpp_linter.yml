@@ -15,7 +15,7 @@ jobs:
       pull-requests: write
 
     env:
-      OPTION_ARGS: -DWARNINGS_AS_ERRORS=ON
+      OPTION_ARGS: -DWARNINGS_AS_ERRORS=ON -DCOMPILE_SHADERS=OFF
 
     steps:
       # Check out project
