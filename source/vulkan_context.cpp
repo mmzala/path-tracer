@@ -202,7 +202,7 @@ void VulkanContext::InitializePhysicalDevice()
 
     if (candidates.empty())
     {
-        spdlog::info("[VULKAN] Failed finding suitable device!");
+        spdlog::error("[VULKAN] Failed finding suitable device!");
     }
 
     _physicalDevice = candidates.rbegin()->second;
