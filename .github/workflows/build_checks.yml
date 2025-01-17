@@ -18,7 +18,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     env:
-      OPTION_ARGS: -DWARNINGS_AS_ERRORS=ON
+      OPTION_ARGS: -DWARNINGS_AS_ERRORS=ON -DCOMPILE_SHADERS=OFF
       PRESET_PREFIX: ${{ matrix.platform == 'windows-latest' && 'x64' }}
       PRESET_SUFFIX: ${{ matrix.configuration }}
 
