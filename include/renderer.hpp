@@ -2,6 +2,7 @@
 #include <memory>
 #include <vulkan/vulkan.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
 #include "vk_common.hpp"
 #include "common.hpp"
 
@@ -41,6 +42,7 @@ private:
     void InitializeTriangle();
     void InitializeBLAS();
     void InitializeTLAS();
+    void InitializeDescriptorSets(glm::ivec2 windowSize);
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     std::unique_ptr<SwapChain> _swapChain;
@@ -57,4 +59,10 @@ private:
 
     AccelerationStructure _blas{};
     AccelerationStructure _tlas{};
+
+    vk::DescriptorPool _descriptorPool;
+    vk::DescriptorSetLayout _descriptorSetLayout;
+    vk::DescriptorSet _descriptorSet;
+
+    std::unique_ptr<Buffer> _uniformBuffer;
 };

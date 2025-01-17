@@ -3,6 +3,8 @@
 #include "vulkan_context.hpp"
 #include "gpu_resources.hpp"
 #include "single_time_commands.hpp"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext> vulkanContext)
     : _vulkanContext(vulkanContext)
@@ -14,10 +16,14 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext
     InitializeTriangle();
     InitializeBLAS();
     InitializeTLAS();
+    InitializeDescriptorSets({ initInfo.width, initInfo.height });
 }
 
 Renderer::~Renderer()
 {
+    _vulkanContext->Device().destroyDescriptorSetLayout(_descriptorSetLayout);
+    _vulkanContext->Device().destroyDescriptorPool(_descriptorPool);
+
     _vulkanContext->Device().destroyAccelerationStructureKHR(_tlas.vkStructure, nullptr, _vulkanContext->Dldi());
     _vulkanContext->Device().destroyAccelerationStructureKHR(_blas.vkStructure, nullptr, _vulkanContext->Dldi());
 
@@ -297,7 +303,7 @@ void Renderer::InitializeTLAS()
 
     BufferCreation instancesBufferCreation {};
     instancesBufferCreation.SetName("TLAS Instances Buffer")
-    .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
         .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
         .SetIsMappable(true)
         .SetSize(buildSizesInfo.accelerationStructureSize);
@@ -325,4 +331,118 @@ void Renderer::InitializeTLAS()
         commandBuffer.buildAccelerationStructuresKHR(1, &buildInfo, accelerationBuildStructureRangeInfos.data(), _vulkanContext->Dldi());
     });
     singleTimeCommands.Submit();
+}
+
+void Renderer::InitializeDescriptorSets(glm::ivec2 windowSize)
+{
+    struct UniformData
+    {
+        glm::mat4 viewInverse {};
+        glm::mat4 projInverse {};
+    };
+
+    UniformData cameraData {};
+    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(0.0f, 0.0f, -2.5f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
+    cameraData.projInverse = glm::inverse(glm::perspective(glm::radians(60.0f), static_cast<float>(windowSize.x) / static_cast<float>(windowSize.y), 0.0f, 1000.0f));
+
+    constexpr vk::DeviceSize uniformBufferSize = sizeof(UniformData);
+    BufferCreation uniformBufferCreation {};
+    uniformBufferCreation.SetName("Camera Uniform Buffer")
+        .SetUsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
+        .SetIsMappable(true)
+        .SetSize(uniformBufferSize);
+    _uniformBuffer = std::make_unique<Buffer>(uniformBufferCreation, _vulkanContext);
+
+    std::array<vk::DescriptorSetLayoutBinding, 3> bindingLayouts {};
+
+    vk::DescriptorSetLayoutBinding& imageLayout = bindingLayouts.at(0);
+    imageLayout.binding = 0;
+    imageLayout.descriptorType = vk::DescriptorType::eStorageImage;
+    imageLayout.descriptorCount = 1;
+    imageLayout.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR;
+
+    vk::DescriptorSetLayoutBinding& accelerationStructureLayout = bindingLayouts.at(1);
+    accelerationStructureLayout.binding = 1;
+    accelerationStructureLayout.descriptorType = vk::DescriptorType::eAccelerationStructureKHR;
+    accelerationStructureLayout.descriptorCount = 1;
+    accelerationStructureLayout.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR;
+
+    vk::DescriptorSetLayoutBinding& cameraLayout = bindingLayouts.at(2);
+    cameraLayout.binding = 2;
+    cameraLayout.descriptorType = vk::DescriptorType::eUniformBuffer;
+    cameraLayout.descriptorCount = 1;
+    cameraLayout.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR;
+
+    vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo {};
+    descriptorSetLayoutCreateInfo.bindingCount = bindingLayouts.size();
+    descriptorSetLayoutCreateInfo.pBindings = bindingLayouts.data();
+    _descriptorSetLayout = _vulkanContext->Device().createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
+
+    std::array<vk::DescriptorPoolSize, 3> poolSizes {};
+
+    vk::DescriptorPoolSize& imagePoolSize = poolSizes.at(0);
+    imagePoolSize.type = vk::DescriptorType::eStorageImage;
+    imagePoolSize.descriptorCount = 1;
+
+    vk::DescriptorPoolSize& accelerationStructureSize = poolSizes.at(0);
+    accelerationStructureSize.type = vk::DescriptorType::eAccelerationStructureKHR;
+    accelerationStructureSize.descriptorCount = 1;
+
+    vk::DescriptorPoolSize& cameraSize = poolSizes.at(0);
+    cameraSize.type = vk::DescriptorType::eUniformBuffer;
+    cameraSize.descriptorCount = 1;
+
+    vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo {};
+    descriptorPoolCreateInfo.maxSets = 1;
+    descriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    descriptorPoolCreateInfo.pPoolSizes = poolSizes.data();
+    _descriptorPool = _vulkanContext->Device().createDescriptorPool(descriptorPoolCreateInfo);
+
+    vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo {};
+    descriptorSetAllocateInfo.descriptorPool = _descriptorPool;
+    descriptorSetAllocateInfo.descriptorSetCount = 1;
+    descriptorSetAllocateInfo.pSetLayouts = &_descriptorSetLayout;
+    _descriptorSet = _vulkanContext->Device().allocateDescriptorSets(descriptorSetAllocateInfo).front();
+
+    vk::DescriptorImageInfo descriptorImageInfo {};
+    // descriptorImageInfo.imageView = // TODO: Make render target image
+    descriptorImageInfo.imageLayout = vk::ImageLayout::eGeneral;
+
+    vk::WriteDescriptorSetAccelerationStructureKHR descriptorAccelerationStructureInfo {};
+    descriptorAccelerationStructureInfo.accelerationStructureCount = 1;
+    descriptorAccelerationStructureInfo.pAccelerationStructures = &_tlas.vkStructure;
+
+    vk::DescriptorBufferInfo descriptorBufferInfo {};
+    descriptorBufferInfo.buffer = _uniformBuffer->buffer;
+    descriptorBufferInfo.offset = 0;
+    descriptorBufferInfo.range = uniformBufferSize;
+
+    std::array<vk::WriteDescriptorSet, 3> descriptorWrites {};
+
+    vk::WriteDescriptorSet& imageWrite = descriptorWrites.at(0);
+    imageWrite.dstSet = _descriptorSet;
+    imageWrite.dstBinding = 0;
+    imageWrite.dstArrayElement = 0;
+    imageWrite.descriptorCount = 1;
+    imageWrite.descriptorType = vk::DescriptorType::eStorageImage;
+    imageWrite.pImageInfo = &descriptorImageInfo;
+
+    vk::WriteDescriptorSet& accelerationStructureWrite = descriptorWrites.at(1);
+    accelerationStructureWrite.pNext = &descriptorAccelerationStructureInfo;
+    accelerationStructureWrite.dstSet = _descriptorSet;
+    accelerationStructureWrite.dstBinding = 1;
+    accelerationStructureWrite.dstArrayElement = 0;
+    accelerationStructureWrite.descriptorCount = 1;
+    accelerationStructureWrite.descriptorType = vk::DescriptorType::eAccelerationStructureKHR;
+
+    vk::WriteDescriptorSet& uniformBufferWrite = descriptorWrites.at(2);
+    uniformBufferWrite.dstSet = _descriptorSet;
+    uniformBufferWrite.dstBinding = 2;
+    uniformBufferWrite.dstArrayElement = 0;
+    uniformBufferWrite.descriptorCount = 1;
+    uniformBufferWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
+    uniformBufferWrite.pBufferInfo = &descriptorBufferInfo;
+
+    _vulkanContext->Device().updateDescriptorSets(static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
