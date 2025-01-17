@@ -36,3 +36,32 @@ struct Buffer
 private:
     std::shared_ptr<VulkanContext> _vulkanContext;
 };
+
+struct ImageCreation
+{
+    uint32_t width {};
+    uint32_t height {};
+    vk::Format format = vk::Format::eUndefined;
+    vk::ImageUsageFlags usage { 0 };
+    std::string name {};
+
+    ImageCreation& SetSize(uint32_t width, uint32_t height);
+    ImageCreation& SetFormat(vk::Format format);
+    ImageCreation& SetUsageFlags(vk::ImageUsageFlags usage);
+    ImageCreation& SetName(std::string_view name);
+};
+
+struct Image
+{
+    Image(const ImageCreation& creation, std::shared_ptr<VulkanContext> vulkanContext);
+    ~Image();
+    NON_COPYABLE(Image);
+    NON_MOVABLE(Image);
+
+    vk::Image image {};
+    vk::ImageView view {};
+    VmaAllocation allocation {};
+
+private:
+    std::shared_ptr<VulkanContext> _vulkanContext;
+};

@@ -12,6 +12,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext
     _swapChain = std::make_unique<SwapChain>(vulkanContext, glm::uvec2 { initInfo.width, initInfo.height });
     InitializeCommandBuffers();
     InitializeSynchronizationObjects();
+    InitializeRenderTarget({ initInfo.width, initInfo.height });
 
     InitializeTriangle();
     InitializeBLAS();
@@ -111,6 +112,17 @@ void Renderer::InitializeSynchronizationObjects()
         VkCheckResult(_vulkanContext->Device().createSemaphore(&semaphoreCreateInfo, nullptr, &_renderFinishedSemaphores[i]), errorMsg);
         VkCheckResult(_vulkanContext->Device().createFence(&fenceCreateInfo, nullptr, &_inFlightFences[i]), errorMsg);
     }
+}
+
+void Renderer::InitializeRenderTarget(glm::ivec2 windowSize)
+{
+    ImageCreation imageCreation{};
+    imageCreation.SetName("Render Target")
+        .SetSize(windowSize.x, windowSize.y)
+        .SetFormat(_swapChain->GetFormat())
+        .SetUsageFlags(vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eStorage);
+
+    _renderTarget = std::make_unique<Image>(imageCreation, _vulkanContext);
 }
 
 void Renderer::InitializeTriangle()
@@ -385,11 +397,11 @@ void Renderer::InitializeDescriptorSets(glm::ivec2 windowSize)
     imagePoolSize.type = vk::DescriptorType::eStorageImage;
     imagePoolSize.descriptorCount = 1;
 
-    vk::DescriptorPoolSize& accelerationStructureSize = poolSizes.at(0);
+    vk::DescriptorPoolSize& accelerationStructureSize = poolSizes.at(1);
     accelerationStructureSize.type = vk::DescriptorType::eAccelerationStructureKHR;
     accelerationStructureSize.descriptorCount = 1;
 
-    vk::DescriptorPoolSize& cameraSize = poolSizes.at(0);
+    vk::DescriptorPoolSize& cameraSize = poolSizes.at(2);
     cameraSize.type = vk::DescriptorType::eUniformBuffer;
     cameraSize.descriptorCount = 1;
 
@@ -406,7 +418,7 @@ void Renderer::InitializeDescriptorSets(glm::ivec2 windowSize)
     _descriptorSet = _vulkanContext->Device().allocateDescriptorSets(descriptorSetAllocateInfo).front();
 
     vk::DescriptorImageInfo descriptorImageInfo {};
-    // descriptorImageInfo.imageView = // TODO: Make render target image
+    descriptorImageInfo.imageView = _renderTarget->view;
     descriptorImageInfo.imageLayout = vk::ImageLayout::eGeneral;
 
     vk::WriteDescriptorSetAccelerationStructureKHR descriptorAccelerationStructureInfo {};

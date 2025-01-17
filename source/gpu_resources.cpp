@@ -73,3 +73,73 @@ Buffer::~Buffer()
 
     vmaDestroyBuffer(_vulkanContext->MemoryAllocator(), buffer, allocation);
 }
+
+ImageCreation& ImageCreation::SetSize(uint32_t width, uint32_t height)
+{
+    this->width = width;
+    this->height = height;
+    return *this;
+}
+
+ImageCreation& ImageCreation::SetFormat(vk::Format format)
+{
+    this->format = format;
+    return *this;
+}
+
+ImageCreation& ImageCreation::SetUsageFlags(vk::ImageUsageFlags usage)
+{
+    this->usage = usage;
+    return *this;
+}
+
+ImageCreation& ImageCreation::SetName(std::string_view name)
+{
+    this->name = name;
+    return *this;
+}
+
+Image::Image(const ImageCreation& creation, std::shared_ptr<VulkanContext> vulkanContext)
+    : _vulkanContext(vulkanContext)
+{
+    vk::ImageCreateInfo imageCreateInfo {};
+    imageCreateInfo.imageType = vk::ImageType::e2D;
+    imageCreateInfo.extent.width = creation.width;
+    imageCreateInfo.extent.height = creation.height;
+    imageCreateInfo.extent.depth = 1;
+    imageCreateInfo.mipLevels = 1;
+    imageCreateInfo.arrayLayers = 1;
+    imageCreateInfo.format = creation.format;
+    imageCreateInfo.tiling = vk::ImageTiling::eOptimal;
+    imageCreateInfo.initialLayout = vk::ImageLayout::eUndefined;
+    imageCreateInfo.sharingMode = vk::SharingMode::eExclusive;
+    imageCreateInfo.samples = vk::SampleCountFlagBits::e1;
+    imageCreateInfo.usage = creation.usage;
+
+    VmaAllocationCreateInfo allocCreateInfo {};
+    allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+    vmaCreateImage(_vulkanContext->MemoryAllocator(), reinterpret_cast<VkImageCreateInfo*>(&imageCreateInfo), &allocCreateInfo, reinterpret_cast<VkImage*>(&image), &allocation, nullptr);
+    std::string allocName = creation.name + " texture allocation";
+    vmaSetAllocationName(_vulkanContext->MemoryAllocator(), allocation, allocName.c_str());
+
+    vk::ImageViewCreateInfo viewCreateInfo {};
+    viewCreateInfo.image = image;
+    viewCreateInfo.viewType = vk::ImageViewType::e2D;
+    viewCreateInfo.format = creation.format;
+    viewCreateInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    viewCreateInfo.subresourceRange.baseMipLevel = 0;
+    viewCreateInfo.subresourceRange.levelCount = 1;
+    viewCreateInfo.subresourceRange.baseArrayLayer = 0;
+    viewCreateInfo.subresourceRange.layerCount = 1;
+    view = _vulkanContext->Device().createImageView(viewCreateInfo);
+
+    VkNameObject(image, creation.name, _vulkanContext);
+}
+
+Image::~Image()
+{
+    _vulkanContext->Device().destroy(view);
+    vmaDestroyImage(_vulkanContext->MemoryAllocator(), image, allocation);
+}
+

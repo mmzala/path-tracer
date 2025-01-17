@@ -8,6 +8,7 @@
 
 struct VulkanInitInfo;
 struct Buffer;
+struct Image;
 class VulkanContext;
 class SwapChain;
 
@@ -38,6 +39,7 @@ private:
     void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex);
     void InitializeCommandBuffers();
     void InitializeSynchronizationObjects();
+    void InitializeRenderTarget(glm::ivec2 windowSize);
 
     void InitializeTriangle();
     void InitializeBLAS();
@@ -50,6 +52,7 @@ private:
     std::array<vk::Semaphore, MAX_FRAMES_IN_FLIGHT> _imageAvailableSemaphores;
     std::array<vk::Semaphore, MAX_FRAMES_IN_FLIGHT> _renderFinishedSemaphores;
     std::array<vk::Fence, MAX_FRAMES_IN_FLIGHT> _inFlightFences;
+    std::unique_ptr<Image> _renderTarget;
 
     uint32_t _currentResourcesFrame = 0;
 
