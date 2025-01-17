@@ -125,6 +125,15 @@ VulkanContext::~VulkanContext()
     _instance.destroy();
 }
 
+vk::PhysicalDeviceRayTracingPipelinePropertiesKHR VulkanContext::RayTracingPipelineProperties() const
+{
+    vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingPipelineProperties {};
+    vk::PhysicalDeviceProperties2KHR physicalDeviceProperties {};
+    physicalDeviceProperties.pNext = &rayTracingPipelineProperties;
+    _physicalDevice.getProperties2(&physicalDeviceProperties);
+    return rayTracingPipelineProperties;
+}
+
 void VulkanContext::InitializeInstance(const VulkanInitInfo& initInfo)
 {
     vk::ApplicationInfo appInfo {};

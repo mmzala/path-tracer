@@ -20,6 +20,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext
     InitializeTLAS();
     InitializeDescriptorSets({ initInfo.width, initInfo.height });
     InitializePipeline();
+    InitializeShaderBindingTable();
 }
 
 Renderer::~Renderer()
@@ -487,7 +488,7 @@ void Renderer::InitializePipeline()
     chitStage.pName = "main";
 
     std::array<vk::RayTracingShaderGroupCreateInfoKHR, 3> shaderGroupsCreateInfo {};
-    // TODO: RENAME
+
     vk::RayTracingShaderGroupCreateInfoKHR& group1 = shaderGroupsCreateInfo.at(0);
     group1.type = vk::RayTracingShaderGroupTypeKHR::eGeneral;
     group1.generalShader = 0;
@@ -524,7 +525,7 @@ void Renderer::InitializePipeline()
     pipelineCreateInfo.pStages = shaderStagesCreateInfo.data();
     pipelineCreateInfo.groupCount = static_cast<uint32_t>(shaderGroupsCreateInfo.size());
     pipelineCreateInfo.pGroups = shaderGroupsCreateInfo.data();
-    pipelineCreateInfo.maxPipelineRayRecursionDepth = 1; // TODO: Check physical device for max depth
+    pipelineCreateInfo.maxPipelineRayRecursionDepth = _vulkanContext->RayTracingPipelineProperties().maxRayRecursionDepth;
     pipelineCreateInfo.pLibraryInfo = &libraryCreateInfo;
     pipelineCreateInfo.pLibraryInterface = nullptr;
     pipelineCreateInfo.layout = pipelineLayout;
@@ -536,4 +537,47 @@ void Renderer::InitializePipeline()
     _vulkanContext->Device().destroyShaderModule(raygenModule);
     _vulkanContext->Device().destroyShaderModule(missModule);
     _vulkanContext->Device().destroyShaderModule(chitModule);
+}
+
+void Renderer::InitializeShaderBindingTable()
+{
+    vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingPipelineProperties = _vulkanContext->RayTracingPipelineProperties();
+    const uint32_t baseAlignment = rayTracingPipelineProperties.shaderGroupBaseAlignment;
+    const uint32_t handleSize = rayTracingPipelineProperties.shaderGroupHandleSize;
+    const uint32_t shaderGroupCount = 3; // TODO: Get this from somewhere
+    vk::DeviceSize sbtBufferSize = baseAlignment * shaderGroupCount;
+
+    BufferCreation shaderBindingTableBufferCreation {};
+    shaderBindingTableBufferCreation.SetName("Shader Binding Table")
+        .SetSize(sbtBufferSize)
+        .SetUsageFlags(vk::BufferUsageFlagBits::eShaderBindingTableKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
+        .SetIsMappable(true);
+    _sbtBuffer = std::make_unique<Buffer>(shaderBindingTableBufferCreation, _vulkanContext);
+
+    std::vector<uint8_t> handles = _vulkanContext->Device().getRayTracingShaderGroupHandlesKHR<uint8_t>(_pipeline, 0, shaderGroupCount, shaderGroupCount * handleSize, _vulkanContext->Dldi());
+
+    vk::BufferDeviceAddressInfo sbtBufferDeviceAddressInfo {};
+    sbtBufferDeviceAddressInfo.buffer = _sbtBuffer->buffer;
+    vk::DeviceAddress sbtAddress = _vulkanContext->Device().getBufferAddress(sbtBufferDeviceAddressInfo);
+
+    vk::StridedDeviceAddressRegionKHR raygenAddressRegion {};
+    raygenAddressRegion.deviceAddress = sbtAddress + baseAlignment * 0;
+    raygenAddressRegion.stride = baseAlignment;
+    raygenAddressRegion.size = baseAlignment;
+
+    vk::StridedDeviceAddressRegionKHR missAddressRegion {};
+    missAddressRegion.deviceAddress = sbtAddress + baseAlignment * 1;
+    missAddressRegion.stride = baseAlignment;
+    missAddressRegion.size = baseAlignment;
+
+    vk::StridedDeviceAddressRegionKHR hitAddressRegion {};
+    hitAddressRegion.deviceAddress = sbtAddress + baseAlignment * 2;
+    hitAddressRegion.stride = baseAlignment;
+    hitAddressRegion.size = baseAlignment;
+
+    uint8_t* sbtBufferData = static_cast<uint8_t*>(_sbtBuffer->mappedPtr);
+    memcpy(sbtBufferData, handles.data(), handleSize);
+    memcpy(sbtBufferData + baseAlignment, handles.data() + handleSize, handleSize);
+    memcpy(sbtBufferData + baseAlignment * 2, handles.data() + handleSize * 2, handleSize);
 }
