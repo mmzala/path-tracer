@@ -16,6 +16,8 @@ include(FetchContent)
 add_executable(RayTracer "source/main.cpp")
 
 option(WARNINGS_AS_ERRORS "Enable warnings as errors" ON)
+option(COMPILE_SHADERS "Compile all GLSL shaders as part of build step" ON)
+
 target_compile_features(RayTracer INTERFACE cxx_std_20)
 target_compile_options(RayTracer
 		INTERFACE -Wall INTERFACE -Wextra INTERFACE -Wno-unknown-pragmas)
@@ -43,3 +45,11 @@ file(GLOB_RECURSE headers CONFIGURE_DEPENDS "include/*.hpp")
 
 target_sources(RayTracer PUBLIC ${headers} PRIVATE ${sources})
 target_include_directories(RayTracer PUBLIC "include" "external")
+
+### SHADER COMPILATION
+
+if (COMPILE_SHADERS)
+	message(STATUS "### Shaders will be compiled on build")
+	add_subdirectory(shaders)
+	add_dependencies(RayTracer Shaders)
+endif ()
