@@ -102,6 +102,8 @@ ImageCreation& ImageCreation::SetName(std::string_view name)
 Image::Image(const ImageCreation& creation, std::shared_ptr<VulkanContext> vulkanContext)
     : _vulkanContext(vulkanContext)
 {
+    format = creation.format;
+
     vk::ImageCreateInfo imageCreateInfo {};
     imageCreateInfo.imageType = vk::ImageType::e2D;
     imageCreateInfo.extent.width = creation.width;

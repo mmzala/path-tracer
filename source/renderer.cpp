@@ -10,15 +10,18 @@
 Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext> vulkanContext)
     : _vulkanContext(vulkanContext)
 {
+    _windowWidth = initInfo.width;
+    _windowHeight = initInfo.height;
+
     _swapChain = std::make_unique<SwapChain>(vulkanContext, glm::uvec2 { initInfo.width, initInfo.height });
     InitializeCommandBuffers();
     InitializeSynchronizationObjects();
-    InitializeRenderTarget({ initInfo.width, initInfo.height });
+    InitializeRenderTarget();
 
     InitializeTriangle();
     InitializeBLAS();
     InitializeTLAS();
-    InitializeDescriptorSets({ initInfo.width, initInfo.height });
+    InitializeDescriptorSets();
     InitializePipeline();
     InitializeShaderBindingTable();
 }
@@ -26,6 +29,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext
 Renderer::~Renderer()
 {
     _vulkanContext->Device().destroyPipeline(_pipeline);
+    _vulkanContext->Device().destroyPipelineLayout(_pipelineLayout);
 
     _vulkanContext->Device().destroyDescriptorSetLayout(_descriptorSetLayout);
     _vulkanContext->Device().destroyDescriptorPool(_descriptorPool);
@@ -90,8 +94,24 @@ void Renderer::Render()
 
 void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex)
 {
+    VkTransitionImageLayout(commandBuffer, _renderTarget->image, _renderTarget->format,
+        vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, _pipeline);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 0, _descriptorSet, nullptr);
+
+    commandBuffer.traceRaysKHR(_raygenAddressRegion, _missAddressRegion, _hitAddressRegion, {}, _windowWidth, _windowHeight, 1, _vulkanContext->Dldi());
+
     VkTransitionImageLayout(commandBuffer, _swapChain->GetImage(swapChainImageIndex), _swapChain->GetFormat(),
-        vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR);
+        vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+    VkTransitionImageLayout(commandBuffer, _renderTarget->image, _renderTarget->format,
+        vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferSrcOptimal);
+
+    vk::Extent2D extent = { _windowWidth, _windowHeight };
+    VkCopyImageToImage(commandBuffer, _renderTarget->image, _swapChain->GetImage(swapChainImageIndex), extent, extent);
+
+    VkTransitionImageLayout(commandBuffer, _swapChain->GetImage(swapChainImageIndex), _swapChain->GetFormat(),
+        vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::ePresentSrcKHR);
 }
 
 void Renderer::InitializeCommandBuffers()
@@ -119,11 +139,11 @@ void Renderer::InitializeSynchronizationObjects()
     }
 }
 
-void Renderer::InitializeRenderTarget(glm::ivec2 windowSize)
+void Renderer::InitializeRenderTarget()
 {
     ImageCreation imageCreation{};
     imageCreation.SetName("Render Target")
-        .SetSize(windowSize.x, windowSize.y)
+        .SetSize(_windowWidth, _windowHeight)
         .SetFormat(_swapChain->GetFormat())
         .SetUsageFlags(vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eStorage);
 
@@ -350,19 +370,13 @@ void Renderer::InitializeTLAS()
     singleTimeCommands.Submit();
 }
 
-void Renderer::InitializeDescriptorSets(glm::ivec2 windowSize)
+void Renderer::InitializeDescriptorSets()
 {
-    struct UniformData
-    {
-        glm::mat4 viewInverse {};
-        glm::mat4 projInverse {};
-    };
-
-    UniformData cameraData {};
+    CameraUniformData cameraData {};
     cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(0.0f, 0.0f, -2.5f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
-    cameraData.projInverse = glm::inverse(glm::perspective(glm::radians(60.0f), static_cast<float>(windowSize.x) / static_cast<float>(windowSize.y), 0.0f, 1000.0f));
+    cameraData.projInverse = glm::inverse(glm::perspective(glm::radians(60.0f), static_cast<float>(_windowWidth) / static_cast<float>(_windowHeight), 0.0f, 1000.0f));
 
-    constexpr vk::DeviceSize uniformBufferSize = sizeof(UniformData);
+    constexpr vk::DeviceSize uniformBufferSize = sizeof(CameraUniformData);
     BufferCreation uniformBufferCreation {};
     uniformBufferCreation.SetName("Camera Uniform Buffer")
         .SetUsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
@@ -515,7 +529,7 @@ void Renderer::InitializePipeline()
     pipelineLayoutCreateInfo.pSetLayouts = &_descriptorSetLayout;
     pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-    vk::PipelineLayout pipelineLayout = _vulkanContext->Device().createPipelineLayout(pipelineLayoutCreateInfo);
+    _pipelineLayout = _vulkanContext->Device().createPipelineLayout(pipelineLayoutCreateInfo);
 
     vk::PipelineLibraryCreateInfoKHR libraryCreateInfo {};
     libraryCreateInfo.libraryCount = 0;
@@ -528,7 +542,7 @@ void Renderer::InitializePipeline()
     pipelineCreateInfo.maxPipelineRayRecursionDepth = _vulkanContext->RayTracingPipelineProperties().maxRayRecursionDepth;
     pipelineCreateInfo.pLibraryInfo = &libraryCreateInfo;
     pipelineCreateInfo.pLibraryInterface = nullptr;
-    pipelineCreateInfo.layout = pipelineLayout;
+    pipelineCreateInfo.layout = _pipelineLayout;
     pipelineCreateInfo.basePipelineHandle = nullptr;
     pipelineCreateInfo.basePipelineIndex = 0;
 
@@ -561,20 +575,17 @@ void Renderer::InitializeShaderBindingTable()
     sbtBufferDeviceAddressInfo.buffer = _sbtBuffer->buffer;
     vk::DeviceAddress sbtAddress = _vulkanContext->Device().getBufferAddress(sbtBufferDeviceAddressInfo);
 
-    vk::StridedDeviceAddressRegionKHR raygenAddressRegion {};
-    raygenAddressRegion.deviceAddress = sbtAddress + baseAlignment * 0;
-    raygenAddressRegion.stride = baseAlignment;
-    raygenAddressRegion.size = baseAlignment;
+    _raygenAddressRegion.deviceAddress = sbtAddress + baseAlignment * 0;
+    _raygenAddressRegion.stride = baseAlignment;
+    _raygenAddressRegion.size = baseAlignment;
 
-    vk::StridedDeviceAddressRegionKHR missAddressRegion {};
-    missAddressRegion.deviceAddress = sbtAddress + baseAlignment * 1;
-    missAddressRegion.stride = baseAlignment;
-    missAddressRegion.size = baseAlignment;
+    _missAddressRegion.deviceAddress = sbtAddress + baseAlignment * 1;
+    _missAddressRegion.stride = baseAlignment;
+    _missAddressRegion.size = baseAlignment;
 
-    vk::StridedDeviceAddressRegionKHR hitAddressRegion {};
-    hitAddressRegion.deviceAddress = sbtAddress + baseAlignment * 2;
-    hitAddressRegion.stride = baseAlignment;
-    hitAddressRegion.size = baseAlignment;
+    _hitAddressRegion.deviceAddress = sbtAddress + baseAlignment * 2;
+    _hitAddressRegion.stride = baseAlignment;
+    _hitAddressRegion.size = baseAlignment;
 
     uint8_t* sbtBufferData = static_cast<uint8_t*>(_sbtBuffer->mappedPtr);
     memcpy(sbtBufferData, handles.data(), handleSize);

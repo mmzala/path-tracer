@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
+#include <glm/mat4x4.hpp>
 #include "vk_common.hpp"
 #include "common.hpp"
 
@@ -36,15 +37,21 @@ private:
         std::unique_ptr<Buffer> instancesBuffer;
     };
 
+    struct CameraUniformData
+    {
+        glm::mat4 viewInverse {};
+        glm::mat4 projInverse {};
+    };
+
     void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex);
     void InitializeCommandBuffers();
     void InitializeSynchronizationObjects();
-    void InitializeRenderTarget(glm::ivec2 windowSize);
+    void InitializeRenderTarget();
 
     void InitializeTriangle();
     void InitializeBLAS();
     void InitializeTLAS();
-    void InitializeDescriptorSets(glm::ivec2 windowSize);
+    void InitializeDescriptorSets();
     void InitializePipeline();
     void InitializeShaderBindingTable();
 
@@ -71,6 +78,13 @@ private:
 
     std::unique_ptr<Buffer> _uniformBuffer;
     std::unique_ptr<Buffer> _sbtBuffer;
+    vk::StridedDeviceAddressRegionKHR _raygenAddressRegion {};
+    vk::StridedDeviceAddressRegionKHR _missAddressRegion {};
+    vk::StridedDeviceAddressRegionKHR _hitAddressRegion {};
 
+    vk::PipelineLayout _pipelineLayout;
     vk::Pipeline _pipeline;
+
+    uint32_t _windowWidth = 0;
+    uint32_t _windowHeight = 0;
 };

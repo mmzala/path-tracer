@@ -61,6 +61,7 @@ struct Image
     vk::Image image {};
     vk::ImageView view {};
     VmaAllocation allocation {};
+    vk::Format format {};
 
 private:
     std::shared_ptr<VulkanContext> _vulkanContext;
