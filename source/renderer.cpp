@@ -3,6 +3,7 @@
 #include "vulkan_context.hpp"
 #include "gpu_resources.hpp"
 #include "single_time_commands.hpp"
+#include "shader.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -18,10 +19,13 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext
     InitializeBLAS();
     InitializeTLAS();
     InitializeDescriptorSets({ initInfo.width, initInfo.height });
+    InitializePipeline();
 }
 
 Renderer::~Renderer()
 {
+    _vulkanContext->Device().destroyPipeline(_pipeline);
+
     _vulkanContext->Device().destroyDescriptorSetLayout(_descriptorSetLayout);
     _vulkanContext->Device().destroyDescriptorPool(_descriptorPool);
 
@@ -457,4 +461,79 @@ void Renderer::InitializeDescriptorSets(glm::ivec2 windowSize)
     uniformBufferWrite.pBufferInfo = &descriptorBufferInfo;
 
     _vulkanContext->Device().updateDescriptorSets(static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+}
+
+void Renderer::InitializePipeline()
+{
+    vk::ShaderModule raygenModule = Shader::CreateShaderModule("shaders/bin/ray_gen.rgen.spv", _vulkanContext->Device());
+    vk::ShaderModule missModule = Shader::CreateShaderModule("shaders/bin/miss.rmiss.spv", _vulkanContext->Device());
+    vk::ShaderModule chitModule = Shader::CreateShaderModule("shaders/bin/closest_hit.rchit.spv", _vulkanContext->Device());
+
+    std::array<vk::PipelineShaderStageCreateInfo, 3> shaderStagesCreateInfo {};
+
+    vk::PipelineShaderStageCreateInfo& raygenStage = shaderStagesCreateInfo.at(0);
+    raygenStage.stage = vk::ShaderStageFlagBits::eRaygenKHR;
+    raygenStage.module = raygenModule;
+    raygenStage.pName = "main";
+
+    vk::PipelineShaderStageCreateInfo& missStage = shaderStagesCreateInfo.at(1);
+    missStage.stage = vk::ShaderStageFlagBits::eMissKHR;
+    missStage.module = missModule;
+    missStage.pName = "main";
+
+    vk::PipelineShaderStageCreateInfo& chitStage = shaderStagesCreateInfo.at(2);
+    chitStage.stage = vk::ShaderStageFlagBits::eClosestHitKHR;
+    chitStage.module = chitModule;
+    chitStage.pName = "main";
+
+    std::array<vk::RayTracingShaderGroupCreateInfoKHR, 3> shaderGroupsCreateInfo {};
+    // TODO: RENAME
+    vk::RayTracingShaderGroupCreateInfoKHR& group1 = shaderGroupsCreateInfo.at(0);
+    group1.type = vk::RayTracingShaderGroupTypeKHR::eGeneral;
+    group1.generalShader = 0;
+    group1.closestHitShader = vk::ShaderUnusedKHR;
+    group1.anyHitShader = vk::ShaderUnusedKHR;
+    group1.intersectionShader = vk::ShaderUnusedKHR;
+
+    vk::RayTracingShaderGroupCreateInfoKHR& group2 = shaderGroupsCreateInfo.at(1);
+    group2.type = vk::RayTracingShaderGroupTypeKHR::eGeneral;
+    group2.generalShader = 1;
+    group2.closestHitShader = vk::ShaderUnusedKHR;
+    group2.anyHitShader = vk::ShaderUnusedKHR;
+    group2.intersectionShader = vk::ShaderUnusedKHR;
+
+    vk::RayTracingShaderGroupCreateInfoKHR& group3 = shaderGroupsCreateInfo.at(2);
+    group3.type = vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup;
+    group3.generalShader = vk::ShaderUnusedKHR;
+    group3.closestHitShader = 2;
+    group3.anyHitShader = vk::ShaderUnusedKHR;
+    group3.intersectionShader = vk::ShaderUnusedKHR;
+
+    vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo {};
+    pipelineLayoutCreateInfo.setLayoutCount = 1;
+    pipelineLayoutCreateInfo.pSetLayouts = &_descriptorSetLayout;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+    pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    vk::PipelineLayout pipelineLayout = _vulkanContext->Device().createPipelineLayout(pipelineLayoutCreateInfo);
+
+    vk::PipelineLibraryCreateInfoKHR libraryCreateInfo {};
+    libraryCreateInfo.libraryCount = 0;
+
+    vk::RayTracingPipelineCreateInfoKHR pipelineCreateInfo {};
+    pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStagesCreateInfo.size());
+    pipelineCreateInfo.pStages = shaderStagesCreateInfo.data();
+    pipelineCreateInfo.groupCount = static_cast<uint32_t>(shaderGroupsCreateInfo.size());
+    pipelineCreateInfo.pGroups = shaderGroupsCreateInfo.data();
+    pipelineCreateInfo.maxPipelineRayRecursionDepth = 1; // TODO: Check physical device for max depth
+    pipelineCreateInfo.pLibraryInfo = &libraryCreateInfo;
+    pipelineCreateInfo.pLibraryInterface = nullptr;
+    pipelineCreateInfo.layout = pipelineLayout;
+    pipelineCreateInfo.basePipelineHandle = nullptr;
+    pipelineCreateInfo.basePipelineIndex = 0;
+
+    _pipeline = _vulkanContext->Device().createRayTracingPipelineKHR(nullptr, nullptr, pipelineCreateInfo, nullptr, _vulkanContext->Dldi()).value;
+
+    _vulkanContext->Device().destroyShaderModule(raygenModule);
+    _vulkanContext->Device().destroyShaderModule(missModule);
+    _vulkanContext->Device().destroyShaderModule(chitModule);
 }

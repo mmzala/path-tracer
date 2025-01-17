@@ -45,6 +45,7 @@ private:
     void InitializeBLAS();
     void InitializeTLAS();
     void InitializeDescriptorSets(glm::ivec2 windowSize);
+    void InitializePipeline();
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     std::unique_ptr<SwapChain> _swapChain;
@@ -68,4 +69,6 @@ private:
     vk::DescriptorSet _descriptorSet;
 
     std::unique_ptr<Buffer> _uniformBuffer;
+
+    vk::Pipeline _pipeline;
 };

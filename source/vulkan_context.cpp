@@ -217,7 +217,10 @@ void VulkanContext::InitializeDevice()
     }
 
     vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features,
-        vk::PhysicalDeviceBufferDeviceAddressFeatures, vk::PhysicalDeviceAccelerationStructureFeaturesKHR> structureChain;
+        vk::PhysicalDeviceBufferDeviceAddressFeatures, vk::PhysicalDeviceAccelerationStructureFeaturesKHR, vk::PhysicalDeviceRayTracingPipelineFeaturesKHR> structureChain;
+
+    auto& rayTracingPipelineFeatures = structureChain.get<vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>();
+    rayTracingPipelineFeatures.rayTracingPipeline = true;
 
     auto& accelerationStructuresFeatures = structureChain.get<vk::PhysicalDeviceAccelerationStructureFeaturesKHR>();
     accelerationStructuresFeatures.accelerationStructure = true;
