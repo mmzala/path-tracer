@@ -216,7 +216,7 @@ void Renderer::InitializeBLAS()
     trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
     trianglesData.vertexData = vertexBufferDeviceAddress;
     trianglesData.vertexStride = sizeof(Vertex);
-    trianglesData.maxVertex = 0;
+    trianglesData.maxVertex = 2;
     trianglesData.indexType = vk::IndexType::eUint32;
     trianglesData.indexData = indexBufferDeviceAddress;
     trianglesData.transformData = transformBufferDeviceAddress;
@@ -287,6 +287,7 @@ void Renderer::InitializeTLAS()
     accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eInstances;
     // Somehow not set to the correct type, need to set myself otherwise validation layers complain
     accelerationStructureGeometry.geometry.instances.sType = vk::StructureType::eAccelerationStructureGeometryInstancesDataKHR;
+    accelerationStructureGeometry.geometry.instances.arrayOfPointers = false;
 
     vk::AccelerationStructureBuildGeometryInfoKHR buildInfo{};
     buildInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
@@ -317,7 +318,7 @@ void Renderer::InitializeTLAS()
     _tlas.scratchBuffer = std::make_unique<Buffer>(scratchBufferCreation, _vulkanContext);
 
     vk::AccelerationStructureCreateInfoKHR createInfo {};
-    createInfo.buffer= _blas.structureBuffer->buffer;
+    createInfo.buffer= _tlas.structureBuffer->buffer;
     createInfo.offset = 0;
     createInfo.size = buildSizesInfo.accelerationStructureSize;
     createInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
@@ -351,7 +352,7 @@ void Renderer::InitializeTLAS()
     buildInfo.scratchData.deviceAddress = _vulkanContext->Device().getBufferAddress(_tlas.scratchBuffer->buffer);
 
     vk::AccelerationStructureGeometryInstancesDataKHR instancesData{};
-    instancesData.arrayOfPointers = false;
+    instancesData.arrayOfPointers = vk::False;
     instancesData.data = _vulkanContext->Device().getBufferAddress(_tlas.instancesBuffer->buffer, _vulkanContext->Dldi());
     accelerationStructureGeometry.geometry.instances = instancesData;
 
@@ -384,6 +385,7 @@ void Renderer::InitializeDescriptorSets()
         .SetIsMappable(true)
         .SetSize(uniformBufferSize);
     _uniformBuffer = std::make_unique<Buffer>(uniformBufferCreation, _vulkanContext);
+    memcpy(_uniformBuffer->mappedPtr, &cameraData, sizeof(CameraUniformData));
 
     std::array<vk::DescriptorSetLayoutBinding, 3> bindingLayouts {};
 
