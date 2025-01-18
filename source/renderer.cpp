@@ -196,7 +196,7 @@ void Renderer::InitializeTriangle()
         .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
         .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
         .SetIsMappable(true)
-        .SetSize(sizeof(uint32_t) * indices.size());
+        .SetSize(sizeof(VkTransformMatrixKHR));
 
     _transformBuffer = std::make_unique<Buffer>(transformBufferCreation, _vulkanContext);
     memcpy(_transformBuffer->mappedPtr, &transformMatrix, sizeof(VkTransformMatrixKHR));
