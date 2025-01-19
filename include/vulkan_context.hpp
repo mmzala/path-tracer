@@ -39,7 +39,10 @@ public:
     [[nodiscard]] vk::Queue PresentQueue() const { return _presentQueue; }
     [[nodiscard]] vk::SurfaceKHR Surface() const { return _surface; }
     [[nodiscard]] vk::CommandPool CommandPool() const { return _commandPool; }
+    [[nodiscard]] VmaAllocator MemoryAllocator() const { return _vmaAllocator; }
     [[nodiscard]] const QueueFamilyIndices& QueueFamilies() const { return _queueFamilyIndices; }
+
+    [[nodiscard]] vk::PhysicalDeviceRayTracingPipelinePropertiesKHR RayTracingPipelineProperties() const;
 
 private:
     vk::Instance _instance;

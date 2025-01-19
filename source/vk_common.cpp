@@ -45,6 +45,9 @@ ImageLayoutTransitionState VkGetImageLayoutTransitionSourceState(vk::ImageLayout
         { vk::ImageLayout::eDepthStencilAttachmentOptimal,
             { .pipelineStage = vk::PipelineStageFlagBits2::eLateFragmentTests,
                 .accessFlags = vk::AccessFlagBits2::eDepthStencilAttachmentWrite } },
+        { vk::ImageLayout::eGeneral,
+            { .pipelineStage = vk::PipelineStageFlagBits2::eRayTracingShaderKHR,
+                .accessFlags = vk::AccessFlagBits2::eShaderWrite | vk::AccessFlagBits2::eMemoryWrite } }
     };
 
     auto it = sourceStateMap.find(sourceLayout);
@@ -80,7 +83,10 @@ ImageLayoutTransitionState VkGetImageLayoutTransitionDestinationState(vk::ImageL
                 .accessFlags = vk::AccessFlags2 { 0 } } },
         { vk::ImageLayout::eDepthStencilReadOnlyOptimal,
             { .pipelineStage = vk::PipelineStageFlagBits2::eEarlyFragmentTests,
-                .accessFlags = vk::AccessFlagBits2::eDepthStencilAttachmentRead } }
+                .accessFlags = vk::AccessFlagBits2::eDepthStencilAttachmentRead } },
+        { vk::ImageLayout::eGeneral,
+            { .pipelineStage = vk::PipelineStageFlagBits2::eRayTracingShaderKHR,
+                .accessFlags = vk::AccessFlagBits2::eShaderRead | vk::AccessFlagBits2::eMemoryRead } },
     };
 
     auto it = destinationStateMap.find(destinationLayout);
@@ -134,4 +140,39 @@ void VkTransitionImageLayout(vk::CommandBuffer commandBuffer, vk::Image image, v
         .setPImageMemoryBarriers(&barrier);
 
     commandBuffer.pipelineBarrier2(dependencyInfo);
+}
+
+void VkCopyImageToImage(vk::CommandBuffer commandBuffer, vk::Image srcImage, vk::Image dstImage, vk::Extent2D srcSize, vk::Extent2D dstSize)
+{
+    vk::ImageBlit2 region {};
+
+    region.srcOffsets[1].x = srcSize.width;
+    region.srcOffsets[1].y = srcSize.height;
+    region.srcOffsets[1].z = 1;
+
+    region.dstOffsets[1].x = dstSize.width;
+    region.dstOffsets[1].y = dstSize.height;
+    region.dstOffsets[1].z = 1;
+
+    region.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    region.srcSubresource.baseArrayLayer = 0;
+    region.srcSubresource.layerCount = 1;
+    region.srcSubresource.mipLevel = 0;
+    region.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    region.dstSubresource.baseArrayLayer = 0;
+    region.dstSubresource.layerCount = 1;
+    region.dstSubresource.mipLevel = 0;
+
+    vk::BlitImageInfo2 blitInfo {};
+    blitInfo.sType = vk::StructureType::eBlitImageInfo2;
+    blitInfo.pNext = nullptr;
+    blitInfo.dstImage = dstImage;
+    blitInfo.dstImageLayout = vk::ImageLayout::eTransferDstOptimal;
+    blitInfo.srcImage = srcImage;
+    blitInfo.srcImageLayout = vk::ImageLayout::eTransferSrcOptimal;
+    blitInfo.filter = vk::Filter::eLinear;
+    blitInfo.regionCount = 1;
+    blitInfo.pRegions = &region;
+
+    commandBuffer.blitImage2(&blitInfo);
 }

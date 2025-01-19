@@ -125,6 +125,15 @@ VulkanContext::~VulkanContext()
     _instance.destroy();
 }
 
+vk::PhysicalDeviceRayTracingPipelinePropertiesKHR VulkanContext::RayTracingPipelineProperties() const
+{
+    vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingPipelineProperties {};
+    vk::PhysicalDeviceProperties2KHR physicalDeviceProperties {};
+    physicalDeviceProperties.pNext = &rayTracingPipelineProperties;
+    _physicalDevice.getProperties2(&physicalDeviceProperties);
+    return rayTracingPipelineProperties;
+}
+
 void VulkanContext::InitializeInstance(const VulkanInitInfo& initInfo)
 {
     vk::ApplicationInfo appInfo {};
@@ -193,7 +202,7 @@ void VulkanContext::InitializePhysicalDevice()
 
     if (candidates.empty())
     {
-        spdlog::info("[VULKAN] Failed finding suitable device!");
+        spdlog::error("[VULKAN] Failed finding suitable device!");
     }
 
     _physicalDevice = candidates.rbegin()->second;
@@ -216,7 +225,18 @@ void VulkanContext::InitializeDevice()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features> structureChain;
+    vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features,
+        vk::PhysicalDeviceBufferDeviceAddressFeatures, vk::PhysicalDeviceAccelerationStructureFeaturesKHR, vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>
+        structureChain;
+
+    auto& rayTracingPipelineFeatures = structureChain.get<vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>();
+    rayTracingPipelineFeatures.rayTracingPipeline = true;
+
+    auto& accelerationStructuresFeatures = structureChain.get<vk::PhysicalDeviceAccelerationStructureFeaturesKHR>();
+    accelerationStructuresFeatures.accelerationStructure = true;
+
+    auto& deviceAddressFeatures = structureChain.get<vk::PhysicalDeviceBufferDeviceAddressFeatures>();
+    deviceAddressFeatures.bufferDeviceAddress = true;
 
     auto& synchronization2Features = structureChain.get<vk::PhysicalDeviceSynchronization2Features>();
     synchronization2Features.synchronization2 = true;
@@ -269,6 +289,8 @@ void VulkanContext::InitializeVMA()
     vmaAllocatorCreateInfo.instance = _instance;
     vmaAllocatorCreateInfo.vulkanApiVersion = vk::makeApiVersion(0, 1, 3, 0);
     vmaAllocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+    vmaAllocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+
     VkCheckResult(vmaCreateAllocator(&vmaAllocatorCreateInfo, &_vmaAllocator), "[VULKAN] Failed creating VMA allocator!");
 }
 
