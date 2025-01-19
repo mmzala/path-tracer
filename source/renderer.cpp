@@ -291,49 +291,6 @@ void Renderer::InitializeBLAS()
 
 void Renderer::InitializeTLAS()
 {
-    vk::AccelerationStructureGeometryInstancesDataKHR instancesData{};
-    instancesData.arrayOfPointers = false;
-
-    vk::AccelerationStructureGeometryKHR accelerationStructureGeometry{};
-    accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
-    accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eInstances;
-    accelerationStructureGeometry.geometry.instances = instancesData;
-
-    vk::AccelerationStructureBuildGeometryInfoKHR buildInfo{};
-    buildInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
-    buildInfo.flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
-    buildInfo.mode = vk::BuildAccelerationStructureModeKHR::eBuild;
-    buildInfo.srcAccelerationStructure = nullptr;
-    buildInfo.dstAccelerationStructure = nullptr;
-    buildInfo.geometryCount = 1;
-    buildInfo.pGeometries = &accelerationStructureGeometry;
-
-    vk::AccelerationStructureBuildSizesInfoKHR buildSizesInfo = _vulkanContext->Device().getAccelerationStructureBuildSizesKHR(
-        vk::AccelerationStructureBuildTypeKHR::eDevice, buildInfo, 1, _vulkanContext->Dldi());
-
-    BufferCreation structureBufferCreation {};
-    structureBufferCreation.SetName("TLAS Structure Buffer")
-        .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
-        .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
-        .SetIsMappable(false)
-        .SetSize(buildSizesInfo.accelerationStructureSize);
-    _tlas.structureBuffer = std::make_unique<Buffer>(structureBufferCreation, _vulkanContext);
-
-    BufferCreation scratchBufferCreation {};
-    scratchBufferCreation.SetName("TLAS Scratch Buffer")
-    .SetUsageFlags(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress)
-        .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
-        .SetIsMappable(false)
-        .SetSize(buildSizesInfo.buildScratchSize);
-    _tlas.scratchBuffer = std::make_unique<Buffer>(scratchBufferCreation, _vulkanContext);
-
-    vk::AccelerationStructureCreateInfoKHR createInfo {};
-    createInfo.buffer= _tlas.structureBuffer->buffer;
-    createInfo.offset = 0;
-    createInfo.size = buildSizesInfo.accelerationStructureSize;
-    createInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
-    _tlas.vkStructure = _vulkanContext->Device().createAccelerationStructureKHR(createInfo, nullptr, _vulkanContext->Dldi());
-
     const VkTransformMatrixKHR identityMatrix =
     {
         1.0f, 0.0f, 0.0f, 0.0f,
@@ -357,16 +314,57 @@ void Renderer::InitializeTLAS()
         .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
         .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
         .SetIsMappable(true)
-        .SetSize(buildSizesInfo.accelerationStructureSize);
+        .SetSize(sizeof(vk::AccelerationStructureInstanceKHR));
     _tlas.instancesBuffer = std::make_unique<Buffer>(instancesBufferCreation, _vulkanContext);
     memcpy(_tlas.instancesBuffer->mappedPtr, &accelerationStructureInstance, sizeof(vk::AccelerationStructureInstanceKHR));
 
-    buildInfo.dstAccelerationStructure = _tlas.vkStructure;
-    buildInfo.scratchData.deviceAddress = GetBufferDeviceAddress(_tlas.scratchBuffer->buffer, _vulkanContext);
+    vk::DeviceOrHostAddressConstKHR instanceDataDeviceAddress {};
+    instanceDataDeviceAddress.deviceAddress = GetBufferDeviceAddress(_tlas.instancesBuffer->buffer, _vulkanContext);
 
-    instancesData.arrayOfPointers = vk::False;
-    instancesData.data = GetBufferDeviceAddress(_tlas.instancesBuffer->buffer, _vulkanContext);
-    accelerationStructureGeometry.geometry.instances = instancesData;
+    vk::AccelerationStructureGeometryKHR accelerationStructureGeometry{};
+    accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
+    accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eInstances;
+    accelerationStructureGeometry.geometry.instances = vk::AccelerationStructureGeometryInstancesDataKHR {};
+    accelerationStructureGeometry.geometry.instances.arrayOfPointers = false;
+    accelerationStructureGeometry.geometry.instances.data = instanceDataDeviceAddress;
+
+    vk::AccelerationStructureBuildGeometryInfoKHR buildGeometryInfo{};
+    buildGeometryInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
+    buildGeometryInfo.flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
+    buildGeometryInfo.mode = vk::BuildAccelerationStructureModeKHR::eBuild;
+    buildGeometryInfo.geometryCount = 1;
+    buildGeometryInfo.pGeometries = &accelerationStructureGeometry;
+
+    uint32_t primitiveCount = 1;
+    vk::AccelerationStructureBuildSizesInfoKHR buildSizesInfo = _vulkanContext->Device().getAccelerationStructureBuildSizesKHR(
+        vk::AccelerationStructureBuildTypeKHR::eDevice, buildGeometryInfo, primitiveCount, _vulkanContext->Dldi());
+
+    BufferCreation structureBufferCreation {};
+    structureBufferCreation.SetName("TLAS Structure Buffer")
+        .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+        .SetIsMappable(false)
+        .SetSize(buildSizesInfo.accelerationStructureSize);
+    _tlas.structureBuffer = std::make_unique<Buffer>(structureBufferCreation, _vulkanContext);
+
+    vk::AccelerationStructureCreateInfoKHR createInfo {};
+    createInfo.buffer= _tlas.structureBuffer->buffer;
+    createInfo.offset = 0;
+    createInfo.size = buildSizesInfo.accelerationStructureSize;
+    createInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
+    _tlas.vkStructure = _vulkanContext->Device().createAccelerationStructureKHR(createInfo, nullptr, _vulkanContext->Dldi());
+
+    BufferCreation scratchBufferCreation {};
+    scratchBufferCreation.SetName("TLAS Scratch Buffer")
+    .SetUsageFlags(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+        .SetIsMappable(false)
+        .SetSize(buildSizesInfo.buildScratchSize);
+    _tlas.scratchBuffer = std::make_unique<Buffer>(scratchBufferCreation, _vulkanContext);
+
+    // Fill remaining data
+    buildGeometryInfo.dstAccelerationStructure = _tlas.vkStructure;
+    buildGeometryInfo.scratchData.deviceAddress = GetBufferDeviceAddress(_tlas.scratchBuffer->buffer, _vulkanContext);
 
     vk::AccelerationStructureBuildRangeInfoKHR buildRangeInfo {};
     buildRangeInfo.primitiveCount = 1;
@@ -378,7 +376,7 @@ void Renderer::InitializeTLAS()
     SingleTimeCommands singleTimeCommands{ _vulkanContext };
     singleTimeCommands.Record([&](vk::CommandBuffer commandBuffer)
     {
-        commandBuffer.buildAccelerationStructuresKHR(1, &buildInfo, accelerationBuildStructureRangeInfos.data(), _vulkanContext->Dldi());
+        commandBuffer.buildAccelerationStructuresKHR(1, &buildGeometryInfo, accelerationBuildStructureRangeInfos.data(), _vulkanContext->Dldi());
     });
     singleTimeCommands.Submit();
 }
