@@ -1,4 +1,5 @@
 #include "renderer.hpp"
+#include "gltf_loader.hpp"
 #include "gpu_resources.hpp"
 #include "shader.hpp"
 #include "single_time_commands.hpp"
@@ -26,6 +27,9 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext
     InitializeRenderTarget();
 
     InitializeTriangle();
+    _gltfLoader = std::make_unique<GLTFLoader>(_vulkanContext);
+    _gltfMesh = _gltfLoader->LoadFromFile("assets/cube/Cube.gltf");
+
     InitializeBLAS();
     InitializeTLAS();
     InitializeDescriptorSets();

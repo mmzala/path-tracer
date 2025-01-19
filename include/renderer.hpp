@@ -12,6 +12,8 @@ struct Buffer;
 struct Image;
 class VulkanContext;
 class SwapChain;
+class GLTFLoader;
+struct GLTFMesh;
 
 class Renderer
 {
@@ -64,6 +66,9 @@ private:
     std::unique_ptr<Image> _renderTarget;
 
     uint32_t _currentResourcesFrame = 0;
+
+    std::unique_ptr<GLTFLoader> _gltfLoader;
+    std::shared_ptr<GLTFMesh> _gltfMesh;
 
     std::unique_ptr<Buffer> _vertexBuffer;
     std::unique_ptr<Buffer> _indexBuffer;
