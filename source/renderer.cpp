@@ -385,7 +385,7 @@ void Renderer::InitializeDescriptorSets()
 {
     CameraUniformData cameraData {};
     cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(0.0f, 0.0f, -2.5f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
-    cameraData.projInverse = glm::inverse(glm::perspective(glm::radians(60.0f), static_cast<float>(_windowWidth) / static_cast<float>(_windowHeight), 0.0f, 1000.0f));
+    cameraData.projInverse = glm::inverse(glm::perspective(glm::radians(60.0f), static_cast<float>(_windowWidth) / static_cast<float>(_windowHeight), 0.1f, 512.0f));
 
     constexpr vk::DeviceSize uniformBufferSize = sizeof(CameraUniformData);
     BufferCreation uniformBufferCreation {};
