@@ -50,7 +50,8 @@ std::shared_ptr<GLTFMesh> GLTFLoader::ProcessMesh(const fastgltf::Asset& gltf)
             indices.reserve(indices.size() + indexAccessor.count);
 
             fastgltf::iterateAccessor<uint32_t>(gltf, indexAccessor,
-                [&](uint32_t idx) {
+                [&](uint32_t idx)
+                {
                     indices.push_back(idx + initialVertex);
                 });
         }
@@ -66,7 +67,8 @@ std::shared_ptr<GLTFMesh> GLTFLoader::ProcessMesh(const fastgltf::Asset& gltf)
             vertices.resize(vertices.size() + positionAccessor.count);
 
             fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(gltf, positionAccessor,
-                [&](fastgltf::math::fvec3 position, size_t index) {
+                [&](fastgltf::math::fvec3 position, size_t index)
+                {
                     GLTFMesh::Vertex vertex;
                     vertex.position = glm::vec3(position.x(), position.y(), position.z());
                     vertices[initialVertex + index] = vertex;
