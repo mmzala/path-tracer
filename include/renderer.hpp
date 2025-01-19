@@ -50,7 +50,7 @@ private:
     void InitializeSynchronizationObjects();
     void InitializeRenderTarget();
 
-    void InitializeTriangle();
+    void InitializeTransformBuffer();
     void InitializeBLAS();
     void InitializeTLAS();
     void InitializeDescriptorSets();
@@ -69,9 +69,6 @@ private:
 
     std::unique_ptr<GLTFLoader> _gltfLoader;
     std::shared_ptr<GLTFMesh> _gltfMesh;
-
-    std::unique_ptr<Buffer> _vertexBuffer;
-    std::unique_ptr<Buffer> _indexBuffer;
     std::unique_ptr<Buffer> _transformBuffer;
 
     AccelerationStructure _blas{};

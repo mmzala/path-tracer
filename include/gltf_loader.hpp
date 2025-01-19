@@ -15,6 +15,9 @@ struct GLTFMesh
 
     std::unique_ptr<Buffer> vertexBuffer;
     std::unique_ptr<Buffer> indexBuffer;
+
+    uint32_t verticesCount {};
+    uint32_t indicesCount {};
 };
 
 class GLTFLoader

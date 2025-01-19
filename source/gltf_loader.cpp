@@ -77,6 +77,8 @@ std::shared_ptr<GLTFMesh> GLTFLoader::ProcessMesh(const fastgltf::Asset& gltf)
     // TODO: Upload to GPU friendly memory
 
     std::shared_ptr<GLTFMesh> mesh = std::make_shared<GLTFMesh>();
+    mesh->verticesCount = vertices.size();
+    mesh->indicesCount = indices.size();
 
     BufferCreation vertexBufferCreation {};
     vertexBufferCreation.SetName(gltfMesh.name + " - Vertex Buffer")
