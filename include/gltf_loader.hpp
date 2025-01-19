@@ -28,10 +28,10 @@ public:
     NON_COPYABLE(GLTFLoader);
     NON_MOVABLE(GLTFLoader);
 
-    std::shared_ptr<GLTFMesh> LoadFromFile(std::string_view path);
+    [[nodiscard]] std::shared_ptr<GLTFMesh> LoadFromFile(std::string_view path);
 
 private:
-    std::shared_ptr<GLTFMesh> ProcessMesh(const fastgltf::Asset& gltf);
+    [[nodiscard]] std::shared_ptr<GLTFMesh> ProcessMesh(const fastgltf::Asset& gltf);
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     fastgltf::Parser _parser;
