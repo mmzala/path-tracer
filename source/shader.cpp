@@ -1,7 +1,7 @@
 #include "shader.hpp"
+#include "vk_common.hpp"
 #include <fstream>
 #include <spdlog/spdlog.h>
-#include "vk_common.hpp"
 
 std::vector<std::byte> Shader::ReadFile(std::string_view filename)
 {

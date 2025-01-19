@@ -1,15 +1,15 @@
 #include "renderer.hpp"
+#include "gpu_resources.hpp"
+#include "shader.hpp"
+#include "single_time_commands.hpp"
 #include "swap_chain.hpp"
 #include "vulkan_context.hpp"
-#include "gpu_resources.hpp"
-#include "single_time_commands.hpp"
-#include "shader.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 uint64_t GetBufferDeviceAddress(vk::Buffer buffer, std::shared_ptr<VulkanContext> vulkanContext)
 {
-    vk::BufferDeviceAddressInfoKHR bufferDeviceAI{};
+    vk::BufferDeviceAddressInfoKHR bufferDeviceAI {};
     bufferDeviceAI.buffer = buffer;
     return vulkanContext->Device().getBufferAddressKHR(&bufferDeviceAI, vulkanContext->Dldi());
 }
@@ -107,7 +107,7 @@ void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t s
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, _pipeline);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 0, _descriptorSet, nullptr);
 
-    vk::StridedDeviceAddressRegionKHR callableShaderSbtEntry{};
+    vk::StridedDeviceAddressRegionKHR callableShaderSbtEntry {};
     commandBuffer.traceRaysKHR(_raygenAddressRegion, _missAddressRegion, _hitAddressRegion, callableShaderSbtEntry, _windowWidth, _windowHeight, 1, _vulkanContext->Dldi());
 
     VkTransitionImageLayout(commandBuffer, _swapChain->GetImage(swapChainImageIndex), _swapChain->GetFormat(),
@@ -149,7 +149,7 @@ void Renderer::InitializeSynchronizationObjects()
 
 void Renderer::InitializeRenderTarget()
 {
-    ImageCreation imageCreation{};
+    ImageCreation imageCreation {};
     imageCreation.SetName("Render Target")
         .SetSize(_windowWidth, _windowHeight)
         .SetFormat(_swapChain->GetFormat())
@@ -160,8 +160,7 @@ void Renderer::InitializeRenderTarget()
 
 void Renderer::InitializeTriangle()
 {
-    const std::vector<Vertex> vertices =
-    {
+    const std::vector<Vertex> vertices = {
         { { 1.0f, 1.0f, 0.0f } },
         { { -1.0f, 1.0f, 0.0f } },
         { { 0.0f, -1.0f, 0.0f } }
@@ -169,13 +168,11 @@ void Renderer::InitializeTriangle()
 
     const std::vector<uint32_t> indices = { 0, 1, 2 };
 
-    const VkTransformMatrixKHR transformMatrix =
-    {
+    const VkTransformMatrixKHR transformMatrix = {
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f
     };
-
 
     // TODO: Upload to GPU friendly memory
 
@@ -231,12 +228,12 @@ void Renderer::InitializeBLAS()
     trianglesData.transformData.hostAddress = nullptr;
     trianglesData.transformData = transformBufferDeviceAddress;
 
-    vk::AccelerationStructureGeometryKHR accelerationStructureGeometry{};
-    accelerationStructureGeometry.flags=vk::GeometryFlagBitsKHR::eOpaque;
+    vk::AccelerationStructureGeometryKHR accelerationStructureGeometry {};
+    accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
     accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eTriangles;
     accelerationStructureGeometry.geometry.triangles = trianglesData;
 
-    vk::AccelerationStructureBuildGeometryInfoKHR buildGeometryInfo{};
+    vk::AccelerationStructureBuildGeometryInfoKHR buildGeometryInfo {};
     buildGeometryInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
     buildGeometryInfo.flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
     buildGeometryInfo.mode = vk::BuildAccelerationStructureModeKHR::eBuild;
@@ -264,7 +261,7 @@ void Renderer::InitializeBLAS()
 
     BufferCreation scratchBufferCreation {};
     scratchBufferCreation.SetName("BLAS Scratch Buffer")
-    .SetUsageFlags(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .SetUsageFlags(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress)
         .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
         .SetIsMappable(false)
         .SetSize(buildSizesInfo.buildScratchSize);
@@ -281,18 +278,15 @@ void Renderer::InitializeBLAS()
     buildRangeInfo.transformOffset = 0;
     std::vector<vk::AccelerationStructureBuildRangeInfoKHR*> accelerationBuildStructureRangeInfos = { &buildRangeInfo };
 
-    SingleTimeCommands singleTimeCommands{ _vulkanContext };
+    SingleTimeCommands singleTimeCommands { _vulkanContext };
     singleTimeCommands.Record([&](vk::CommandBuffer commandBuffer)
-    {
-        commandBuffer.buildAccelerationStructuresKHR(1, &buildGeometryInfo, accelerationBuildStructureRangeInfos.data(), _vulkanContext->Dldi());
-    });
+        { commandBuffer.buildAccelerationStructuresKHR(1, &buildGeometryInfo, accelerationBuildStructureRangeInfos.data(), _vulkanContext->Dldi()); });
     singleTimeCommands.Submit();
 }
 
 void Renderer::InitializeTLAS()
 {
-    const VkTransformMatrixKHR identityMatrix =
-    {
+    const VkTransformMatrixKHR identityMatrix = {
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f
@@ -321,14 +315,14 @@ void Renderer::InitializeTLAS()
     vk::DeviceOrHostAddressConstKHR instanceDataDeviceAddress {};
     instanceDataDeviceAddress.deviceAddress = GetBufferDeviceAddress(_tlas.instancesBuffer->buffer, _vulkanContext);
 
-    vk::AccelerationStructureGeometryKHR accelerationStructureGeometry{};
+    vk::AccelerationStructureGeometryKHR accelerationStructureGeometry {};
     accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
     accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eInstances;
     accelerationStructureGeometry.geometry.instances = vk::AccelerationStructureGeometryInstancesDataKHR {};
     accelerationStructureGeometry.geometry.instances.arrayOfPointers = false;
     accelerationStructureGeometry.geometry.instances.data = instanceDataDeviceAddress;
 
-    vk::AccelerationStructureBuildGeometryInfoKHR buildGeometryInfo{};
+    vk::AccelerationStructureBuildGeometryInfoKHR buildGeometryInfo {};
     buildGeometryInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
     buildGeometryInfo.flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
     buildGeometryInfo.mode = vk::BuildAccelerationStructureModeKHR::eBuild;
@@ -348,7 +342,7 @@ void Renderer::InitializeTLAS()
     _tlas.structureBuffer = std::make_unique<Buffer>(structureBufferCreation, _vulkanContext);
 
     vk::AccelerationStructureCreateInfoKHR createInfo {};
-    createInfo.buffer= _tlas.structureBuffer->buffer;
+    createInfo.buffer = _tlas.structureBuffer->buffer;
     createInfo.offset = 0;
     createInfo.size = buildSizesInfo.accelerationStructureSize;
     createInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
@@ -356,7 +350,7 @@ void Renderer::InitializeTLAS()
 
     BufferCreation scratchBufferCreation {};
     scratchBufferCreation.SetName("TLAS Scratch Buffer")
-    .SetUsageFlags(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .SetUsageFlags(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress)
         .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
         .SetIsMappable(false)
         .SetSize(buildSizesInfo.buildScratchSize);
@@ -373,11 +367,9 @@ void Renderer::InitializeTLAS()
     buildRangeInfo.transformOffset = 0;
     std::vector<vk::AccelerationStructureBuildRangeInfoKHR*> accelerationBuildStructureRangeInfos = { &buildRangeInfo };
 
-    SingleTimeCommands singleTimeCommands{ _vulkanContext };
+    SingleTimeCommands singleTimeCommands { _vulkanContext };
     singleTimeCommands.Record([&](vk::CommandBuffer commandBuffer)
-    {
-        commandBuffer.buildAccelerationStructuresKHR(1, &buildGeometryInfo, accelerationBuildStructureRangeInfos.data(), _vulkanContext->Dldi());
-    });
+        { commandBuffer.buildAccelerationStructuresKHR(1, &buildGeometryInfo, accelerationBuildStructureRangeInfos.data(), _vulkanContext->Dldi()); });
     singleTimeCommands.Submit();
 }
 
@@ -567,7 +559,8 @@ void Renderer::InitializePipeline()
 
 void Renderer::InitializeShaderBindingTable()
 {
-    auto AlignedSize = [](uint32_t value, uint32_t alignment){ return (value + alignment - 1) & ~(alignment - 1); };
+    auto AlignedSize = [](uint32_t value, uint32_t alignment)
+    { return (value + alignment - 1) & ~(alignment - 1); };
 
     const vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingPipelineProperties = _vulkanContext->RayTracingPipelineProperties();
     const uint32_t handleSize = rayTracingPipelineProperties.shaderGroupHandleSize;

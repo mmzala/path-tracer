@@ -144,4 +144,3 @@ Image::~Image()
     _vulkanContext->Device().destroy(view);
     vmaDestroyImage(_vulkanContext->MemoryAllocator(), image, allocation);
 }
-
