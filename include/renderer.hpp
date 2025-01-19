@@ -77,7 +77,10 @@ private:
     vk::DescriptorSet _descriptorSet;
 
     std::unique_ptr<Buffer> _uniformBuffer;
-    std::unique_ptr<Buffer> _sbtBuffer;
+
+    std::unique_ptr<Buffer> _raygenSBT;
+    std::unique_ptr<Buffer> _missSBT;
+    std::unique_ptr<Buffer> _hitSBT;
     vk::StridedDeviceAddressRegionKHR _raygenAddressRegion {};
     vk::StridedDeviceAddressRegionKHR _missAddressRegion {};
     vk::StridedDeviceAddressRegionKHR _hitAddressRegion {};

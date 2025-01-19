@@ -7,6 +7,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+uint64_t GetBufferDeviceAddress(vk::Buffer buffer, std::shared_ptr<VulkanContext> vulkanContext)
+{
+    vk::BufferDeviceAddressInfoKHR bufferDeviceAI{};
+    bufferDeviceAI.buffer = buffer;
+    return vulkanContext->Device().getBufferAddressKHR(&bufferDeviceAI, vulkanContext->Dldi());
+}
+
 Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext> vulkanContext)
     : _vulkanContext(vulkanContext)
 {
@@ -100,7 +107,8 @@ void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t s
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, _pipeline);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 0, _descriptorSet, nullptr);
 
-    commandBuffer.traceRaysKHR(_raygenAddressRegion, _missAddressRegion, _hitAddressRegion, {}, _windowWidth, _windowHeight, 1, _vulkanContext->Dldi());
+    vk::StridedDeviceAddressRegionKHR callableShaderSbtEntry{};
+    commandBuffer.traceRaysKHR(_raygenAddressRegion, _missAddressRegion, _hitAddressRegion, callableShaderSbtEntry, _windowWidth, _windowHeight, 1, _vulkanContext->Dldi());
 
     VkTransitionImageLayout(commandBuffer, _swapChain->GetImage(swapChainImageIndex), _swapChain->GetFormat(),
         vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
@@ -208,9 +216,9 @@ void Renderer::InitializeBLAS()
     vk::DeviceOrHostAddressConstKHR indexBufferDeviceAddress {};
     vk::DeviceOrHostAddressConstKHR transformBufferDeviceAddress {};
 
-    vertexBufferDeviceAddress.deviceAddress = _vulkanContext->Device().getBufferAddress(_vertexBuffer->buffer);
-    indexBufferDeviceAddress.deviceAddress = _vulkanContext->Device().getBufferAddress(_indexBuffer->buffer);
-    transformBufferDeviceAddress.deviceAddress = _vulkanContext->Device().getBufferAddress(_transformBuffer->buffer);
+    vertexBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_vertexBuffer->buffer, _vulkanContext);
+    indexBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_indexBuffer->buffer, _vulkanContext);
+    transformBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_transformBuffer->buffer, _vulkanContext);
 
     vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData {};
     trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
@@ -263,7 +271,7 @@ void Renderer::InitializeBLAS()
     _blas.vkStructure = _vulkanContext->Device().createAccelerationStructureKHR(createInfo, nullptr, _vulkanContext->Dldi());
 
     buildInfo.dstAccelerationStructure = _blas.vkStructure;
-    buildInfo.scratchData.deviceAddress = _vulkanContext->Device().getBufferAddress(_blas.scratchBuffer->buffer);
+    buildInfo.scratchData.deviceAddress = GetBufferDeviceAddress(_blas.scratchBuffer->buffer, _vulkanContext);
 
     vk::AccelerationStructureBuildRangeInfoKHR buildRangeInfo {};
     buildRangeInfo.primitiveCount = 1;
@@ -282,12 +290,13 @@ void Renderer::InitializeBLAS()
 
 void Renderer::InitializeTLAS()
 {
+    vk::AccelerationStructureGeometryInstancesDataKHR instancesData{};
+    instancesData.arrayOfPointers = false;
+
     vk::AccelerationStructureGeometryKHR accelerationStructureGeometry{};
     accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
     accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eInstances;
-    // Somehow not set to the correct type, need to set myself otherwise validation layers complain
-    accelerationStructureGeometry.geometry.instances.sType = vk::StructureType::eAccelerationStructureGeometryInstancesDataKHR;
-    accelerationStructureGeometry.geometry.instances.arrayOfPointers = false;
+    accelerationStructureGeometry.geometry.instances = instancesData;
 
     vk::AccelerationStructureBuildGeometryInfoKHR buildInfo{};
     buildInfo.type = vk::AccelerationStructureTypeKHR::eTopLevel;
@@ -349,11 +358,10 @@ void Renderer::InitializeTLAS()
     memcpy(_tlas.instancesBuffer->mappedPtr, &accelerationStructureInstance, sizeof(vk::AccelerationStructureInstanceKHR));
 
     buildInfo.dstAccelerationStructure = _tlas.vkStructure;
-    buildInfo.scratchData.deviceAddress = _vulkanContext->Device().getBufferAddress(_tlas.scratchBuffer->buffer);
+    buildInfo.scratchData.deviceAddress = GetBufferDeviceAddress(_tlas.scratchBuffer->buffer, _vulkanContext);
 
-    vk::AccelerationStructureGeometryInstancesDataKHR instancesData{};
     instancesData.arrayOfPointers = vk::False;
-    instancesData.data = _vulkanContext->Device().getBufferAddress(_tlas.instancesBuffer->buffer, _vulkanContext->Dldi());
+    instancesData.data = GetBufferDeviceAddress(_tlas.instancesBuffer->buffer, _vulkanContext);
     accelerationStructureGeometry.geometry.instances = instancesData;
 
     vk::AccelerationStructureBuildRangeInfoKHR buildRangeInfo {};
@@ -557,40 +565,43 @@ void Renderer::InitializePipeline()
 
 void Renderer::InitializeShaderBindingTable()
 {
-    vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingPipelineProperties = _vulkanContext->RayTracingPipelineProperties();
-    const uint32_t baseAlignment = rayTracingPipelineProperties.shaderGroupBaseAlignment;
+    auto AlignedSize = [](uint32_t value, uint32_t alignment){ return (value + alignment - 1) & ~(alignment - 1); };
+
+    const vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingPipelineProperties = _vulkanContext->RayTracingPipelineProperties();
     const uint32_t handleSize = rayTracingPipelineProperties.shaderGroupHandleSize;
+    const uint32_t handleSizeAligned = AlignedSize(rayTracingPipelineProperties.shaderGroupHandleSize, rayTracingPipelineProperties.shaderGroupHandleAlignment);
     const uint32_t shaderGroupCount = 3; // TODO: Get this from somewhere
-    vk::DeviceSize sbtBufferSize = baseAlignment * shaderGroupCount;
+    vk::DeviceSize sbtSize = shaderGroupCount * handleSizeAligned;
 
     BufferCreation shaderBindingTableBufferCreation {};
-    shaderBindingTableBufferCreation.SetName("Shader Binding Table")
-        .SetSize(sbtBufferSize)
+    shaderBindingTableBufferCreation.SetName("Ray Gen Shader Binding Table")
+        .SetSize(sbtSize)
         .SetUsageFlags(vk::BufferUsageFlagBits::eShaderBindingTableKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
         .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
         .SetIsMappable(true);
-    _sbtBuffer = std::make_unique<Buffer>(shaderBindingTableBufferCreation, _vulkanContext);
+    _raygenSBT = std::make_unique<Buffer>(shaderBindingTableBufferCreation, _vulkanContext);
 
-    std::vector<uint8_t> handles = _vulkanContext->Device().getRayTracingShaderGroupHandlesKHR<uint8_t>(_pipeline, 0, shaderGroupCount, shaderGroupCount * handleSize, _vulkanContext->Dldi());
+    shaderBindingTableBufferCreation.SetName("Miss Shader Binding Table");
+    _missSBT = std::make_unique<Buffer>(shaderBindingTableBufferCreation, _vulkanContext);
 
-    vk::BufferDeviceAddressInfo sbtBufferDeviceAddressInfo {};
-    sbtBufferDeviceAddressInfo.buffer = _sbtBuffer->buffer;
-    vk::DeviceAddress sbtAddress = _vulkanContext->Device().getBufferAddress(sbtBufferDeviceAddressInfo);
+    shaderBindingTableBufferCreation.SetName("Hit Shader Binding Table");
+    _hitSBT = std::make_unique<Buffer>(shaderBindingTableBufferCreation, _vulkanContext);
 
-    _raygenAddressRegion.deviceAddress = sbtAddress + baseAlignment * 0;
-    _raygenAddressRegion.stride = baseAlignment;
-    _raygenAddressRegion.size = baseAlignment;
+    std::vector<uint8_t> handles = _vulkanContext->Device().getRayTracingShaderGroupHandlesKHR<uint8_t>(_pipeline, 0, shaderGroupCount, sbtSize, _vulkanContext->Dldi());
 
-    _missAddressRegion.deviceAddress = sbtAddress + baseAlignment * 1;
-    _missAddressRegion.stride = baseAlignment;
-    _missAddressRegion.size = baseAlignment;
+    memcpy(_raygenSBT->mappedPtr, handles.data(), handleSize);
+    memcpy(_missSBT->mappedPtr, handles.data() + handleSizeAligned, handleSize);
+    memcpy(_hitSBT->mappedPtr, handles.data() + handleSizeAligned * 2, handleSize);
 
-    _hitAddressRegion.deviceAddress = sbtAddress + baseAlignment * 2;
-    _hitAddressRegion.stride = baseAlignment;
-    _hitAddressRegion.size = baseAlignment;
+    _raygenAddressRegion.deviceAddress = GetBufferDeviceAddress(_raygenSBT->buffer, _vulkanContext);
+    _raygenAddressRegion.stride = handleSizeAligned;
+    _raygenAddressRegion.size = handleSizeAligned;
 
-    uint8_t* sbtBufferData = static_cast<uint8_t*>(_sbtBuffer->mappedPtr);
-    memcpy(sbtBufferData, handles.data(), handleSize);
-    memcpy(sbtBufferData + baseAlignment, handles.data() + handleSize, handleSize);
-    memcpy(sbtBufferData + baseAlignment * 2, handles.data() + handleSize * 2, handleSize);
+    _missAddressRegion.deviceAddress = GetBufferDeviceAddress(_missSBT->buffer, _vulkanContext);
+    _missAddressRegion.stride = handleSizeAligned;
+    _missAddressRegion.size = handleSizeAligned;
+
+    _hitAddressRegion.deviceAddress = GetBufferDeviceAddress(_hitSBT->buffer, _vulkanContext);
+    _hitAddressRegion.stride = handleSizeAligned;
+    _hitAddressRegion.size = handleSizeAligned;
 }
