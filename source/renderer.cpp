@@ -223,10 +223,12 @@ void Renderer::InitializeBLAS()
     vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData {};
     trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
     trianglesData.vertexData = vertexBufferDeviceAddress;
-    trianglesData.vertexStride = sizeof(Vertex);
     trianglesData.maxVertex = 2;
+    trianglesData.vertexStride = sizeof(Vertex);
     trianglesData.indexType = vk::IndexType::eUint32;
     trianglesData.indexData = indexBufferDeviceAddress;
+    trianglesData.transformData.deviceAddress = 0;
+    trianglesData.transformData.hostAddress = nullptr;
     trianglesData.transformData = transformBufferDeviceAddress;
 
     vk::AccelerationStructureGeometryKHR accelerationStructureGeometry{};
@@ -234,18 +236,16 @@ void Renderer::InitializeBLAS()
     accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eTriangles;
     accelerationStructureGeometry.geometry.triangles = trianglesData;
 
-    vk::AccelerationStructureBuildGeometryInfoKHR buildInfo{};
-    buildInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
-    buildInfo.flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
-    buildInfo.mode = vk::BuildAccelerationStructureModeKHR::eBuild;
-    buildInfo.srcAccelerationStructure = nullptr;
-    buildInfo.dstAccelerationStructure = nullptr;
-    buildInfo.geometryCount = 1;
-    buildInfo.pGeometries = &accelerationStructureGeometry;
-    buildInfo.scratchData = {};
+    vk::AccelerationStructureBuildGeometryInfoKHR buildGeometryInfo{};
+    buildGeometryInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
+    buildGeometryInfo.flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
+    buildGeometryInfo.mode = vk::BuildAccelerationStructureModeKHR::eBuild;
+    buildGeometryInfo.geometryCount = 1;
+    buildGeometryInfo.pGeometries = &accelerationStructureGeometry;
 
+    const uint32_t numTriangles = 1;
     vk::AccelerationStructureBuildSizesInfoKHR buildSizesInfo = _vulkanContext->Device().getAccelerationStructureBuildSizesKHR(
-        vk::AccelerationStructureBuildTypeKHR::eDevice, buildInfo, 1, _vulkanContext->Dldi());
+        vk::AccelerationStructureBuildTypeKHR::eDevice, buildGeometryInfo, numTriangles, _vulkanContext->Dldi());
 
     BufferCreation structureBufferCreation {};
     structureBufferCreation.SetName("BLAS Structure Buffer")
@@ -255,6 +255,13 @@ void Renderer::InitializeBLAS()
         .SetSize(buildSizesInfo.accelerationStructureSize);
     _blas.structureBuffer = std::make_unique<Buffer>(structureBufferCreation, _vulkanContext);
 
+    vk::AccelerationStructureCreateInfoKHR createInfo {};
+    createInfo.buffer = _blas.structureBuffer->buffer;
+    createInfo.offset = 0;
+    createInfo.size = buildSizesInfo.accelerationStructureSize;
+    createInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
+    _blas.vkStructure = _vulkanContext->Device().createAccelerationStructureKHR(createInfo, nullptr, _vulkanContext->Dldi());
+
     BufferCreation scratchBufferCreation {};
     scratchBufferCreation.SetName("BLAS Scratch Buffer")
     .SetUsageFlags(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress)
@@ -263,18 +270,12 @@ void Renderer::InitializeBLAS()
         .SetSize(buildSizesInfo.buildScratchSize);
     _blas.scratchBuffer = std::make_unique<Buffer>(scratchBufferCreation, _vulkanContext);
 
-    vk::AccelerationStructureCreateInfoKHR createInfo {};
-    createInfo.buffer = _blas.structureBuffer->buffer;
-    createInfo.offset = 0;
-    createInfo.size = buildSizesInfo.accelerationStructureSize;
-    createInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
-    _blas.vkStructure = _vulkanContext->Device().createAccelerationStructureKHR(createInfo, nullptr, _vulkanContext->Dldi());
-
-    buildInfo.dstAccelerationStructure = _blas.vkStructure;
-    buildInfo.scratchData.deviceAddress = GetBufferDeviceAddress(_blas.scratchBuffer->buffer, _vulkanContext);
+    // Fill in remaining data
+    buildGeometryInfo.dstAccelerationStructure = _blas.vkStructure;
+    buildGeometryInfo.scratchData.deviceAddress = GetBufferDeviceAddress(_blas.scratchBuffer->buffer, _vulkanContext);
 
     vk::AccelerationStructureBuildRangeInfoKHR buildRangeInfo {};
-    buildRangeInfo.primitiveCount = 1;
+    buildRangeInfo.primitiveCount = numTriangles;
     buildRangeInfo.primitiveOffset = 0;
     buildRangeInfo.firstVertex = 0;
     buildRangeInfo.transformOffset = 0;
@@ -283,7 +284,7 @@ void Renderer::InitializeBLAS()
     SingleTimeCommands singleTimeCommands{ _vulkanContext };
     singleTimeCommands.Record([&](vk::CommandBuffer commandBuffer)
     {
-        commandBuffer.buildAccelerationStructuresKHR(1, &buildInfo, accelerationBuildStructureRangeInfos.data(), _vulkanContext->Dldi());
+        commandBuffer.buildAccelerationStructuresKHR(1, &buildGeometryInfo, accelerationBuildStructureRangeInfos.data(), _vulkanContext->Dldi());
     });
     singleTimeCommands.Submit();
 }
@@ -346,7 +347,10 @@ void Renderer::InitializeTLAS()
     accelerationStructureInstance.instanceCustomIndex = 0;
     accelerationStructureInstance.mask = 0xFF;
     accelerationStructureInstance.instanceShaderBindingTableRecordOffset = 0;
-    accelerationStructureInstance.accelerationStructureReference = _vulkanContext->Device().getAccelerationStructureAddressKHR(_blas.vkStructure, _vulkanContext->Dldi());
+
+    vk::AccelerationStructureDeviceAddressInfoKHR blasDeviceAddress {};
+    blasDeviceAddress.accelerationStructure = _blas.vkStructure;
+    accelerationStructureInstance.accelerationStructureReference = _vulkanContext->Device().getAccelerationStructureAddressKHR(blasDeviceAddress, _vulkanContext->Dldi());
 
     BufferCreation instancesBufferCreation {};
     instancesBufferCreation.SetName("TLAS Instances Buffer")
@@ -393,7 +397,7 @@ void Renderer::InitializeDescriptorSets()
         .SetIsMappable(true)
         .SetSize(uniformBufferSize);
     _uniformBuffer = std::make_unique<Buffer>(uniformBufferCreation, _vulkanContext);
-    memcpy(_uniformBuffer->mappedPtr, &cameraData, sizeof(CameraUniformData));
+    memcpy(_uniformBuffer->mappedPtr, &cameraData, uniformBufferSize);
 
     std::array<vk::DescriptorSetLayoutBinding, 3> bindingLayouts {};
 
