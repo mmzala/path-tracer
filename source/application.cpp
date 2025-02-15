@@ -28,7 +28,7 @@ Application::Application()
         return;
     }
 
-    SDL_WindowFlags flags = SDL_WINDOW_VULKAN;
+    SDL_WindowFlags flags = SDL_WINDOW_VULKAN | SDL_WINDOW_FULLSCREEN;
     _window = SDL_CreateWindow("RayTracer", displayMode->w, displayMode->h, flags);
 
     if (_window == nullptr)
