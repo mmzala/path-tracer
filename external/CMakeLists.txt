@@ -27,7 +27,7 @@ FetchContent_MakeAvailable(SpdLog)
 FetchContent_Declare(
         SDL
         GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-        GIT_TAG preview-3.1.3
+        GIT_TAG release-3.2.0
         GIT_SHALLOW TRUE
         GIT_PROGRESS TRUE
 )
