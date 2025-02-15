@@ -3,8 +3,19 @@
 #include "gpu_resources.hpp"
 #include <fastgltf/core.hpp>
 #include <glm/vec3.hpp>
+#include <glm/matrix.hpp>
+#include <optional>
 
 class VulkanContext;
+
+struct GLTFNode
+{
+    const GLTFNode* parent = nullptr;
+    glm::mat4 localMatrix {};
+    std::optional<uint32_t> meshIndex {};
+
+    [[nodiscard]] glm::mat4 GetWorldMatrix() const;
+};
 
 struct GLTFModel
 {
@@ -15,9 +26,10 @@ struct GLTFModel
 
     std::unique_ptr<Buffer> vertexBuffer;
     std::unique_ptr<Buffer> indexBuffer;
-
     uint32_t verticesCount {};
     uint32_t indicesCount {};
+
+    std::vector<GLTFNode> nodes {};
 };
 
 class GLTFLoader
