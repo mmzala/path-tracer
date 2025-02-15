@@ -8,14 +8,14 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-uint64_t GetBufferDeviceAddress(vk::Buffer buffer, std::shared_ptr<VulkanContext> vulkanContext)
+uint64_t GetBufferDeviceAddress(vk::Buffer buffer, const std::shared_ptr<VulkanContext>& vulkanContext)
 {
     vk::BufferDeviceAddressInfoKHR bufferDeviceAI {};
     bufferDeviceAI.buffer = buffer;
     return vulkanContext->Device().getBufferAddressKHR(&bufferDeviceAI, vulkanContext->Dldi());
 }
 
-Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext> vulkanContext)
+Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext)
 {
     _windowWidth = initInfo.width;
@@ -27,7 +27,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext
     InitializeRenderTarget();
 
     _gltfLoader = std::make_unique<GLTFLoader>(_vulkanContext);
-    _gltfMesh = _gltfLoader->LoadFromFile("assets/cube/Cube.gltf");
+    _gltfModel = _gltfLoader->LoadFromFile("assets/dragon/DragonAttenuation.gltf");
     InitializeTransformBuffer();
 
     InitializeBLAS();
@@ -189,15 +189,15 @@ void Renderer::InitializeBLAS()
     vk::DeviceOrHostAddressConstKHR indexBufferDeviceAddress {};
     vk::DeviceOrHostAddressConstKHR transformBufferDeviceAddress {};
 
-    vertexBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_gltfMesh->vertexBuffer->buffer, _vulkanContext);
-    indexBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_gltfMesh->indexBuffer->buffer, _vulkanContext);
+    vertexBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_gltfModel->vertexBuffer->buffer, _vulkanContext);
+    indexBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_gltfModel->indexBuffer->buffer, _vulkanContext);
     transformBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_transformBuffer->buffer, _vulkanContext);
 
     vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData {};
     trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
     trianglesData.vertexData = vertexBufferDeviceAddress;
-    trianglesData.maxVertex = _gltfMesh->verticesCount;
-    trianglesData.vertexStride = sizeof(GLTFMesh::Vertex);
+    trianglesData.maxVertex = _gltfModel->verticesCount;
+    trianglesData.vertexStride = sizeof(GLTFModel::Vertex);
     trianglesData.indexType = vk::IndexType::eUint32;
     trianglesData.indexData = indexBufferDeviceAddress;
     trianglesData.transformData.deviceAddress = 0;
@@ -216,7 +216,7 @@ void Renderer::InitializeBLAS()
     buildGeometryInfo.geometryCount = 1;
     buildGeometryInfo.pGeometries = &accelerationStructureGeometry;
 
-    const uint32_t numTriangles = _gltfMesh->indicesCount / 3;
+    const uint32_t numTriangles = _gltfModel->indicesCount / 3;
     vk::AccelerationStructureBuildSizesInfoKHR buildSizesInfo = _vulkanContext->Device().getAccelerationStructureBuildSizesKHR(
         vk::AccelerationStructureBuildTypeKHR::eDevice, buildGeometryInfo, numTriangles, _vulkanContext->Dldi());
 

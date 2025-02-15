@@ -6,7 +6,7 @@
 
 class VulkanContext;
 
-struct GLTFMesh
+struct GLTFModel
 {
     struct Vertex
     {
@@ -23,15 +23,15 @@ struct GLTFMesh
 class GLTFLoader
 {
 public:
-    GLTFLoader(std::shared_ptr<VulkanContext> vulkanContext);
+    GLTFLoader(const std::shared_ptr<VulkanContext>& vulkanContext);
     ~GLTFLoader() = default;
     NON_COPYABLE(GLTFLoader);
     NON_MOVABLE(GLTFLoader);
 
-    [[nodiscard]] std::shared_ptr<GLTFMesh> LoadFromFile(std::string_view path);
+    [[nodiscard]] std::shared_ptr<GLTFModel> LoadFromFile(std::string_view path);
 
 private:
-    [[nodiscard]] std::shared_ptr<GLTFMesh> ProcessMesh(const fastgltf::Asset& gltf);
+    [[nodiscard]] std::shared_ptr<GLTFModel> ProcessModel(const fastgltf::Asset& gltf);
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     fastgltf::Parser _parser;

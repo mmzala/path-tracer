@@ -13,12 +13,12 @@ struct Image;
 class VulkanContext;
 class SwapChain;
 class GLTFLoader;
-struct GLTFMesh;
+struct GLTFModel;
 
 class Renderer
 {
 public:
-    Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext> vulkanContext);
+    Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext);
     ~Renderer();
     NON_COPYABLE(Renderer);
     NON_MOVABLE(Renderer);
@@ -68,7 +68,7 @@ private:
     uint32_t _currentResourcesFrame = 0;
 
     std::unique_ptr<GLTFLoader> _gltfLoader;
-    std::shared_ptr<GLTFMesh> _gltfMesh;
+    std::shared_ptr<GLTFModel> _gltfModel;
     std::unique_ptr<Buffer> _transformBuffer;
 
     AccelerationStructure _blas{};
