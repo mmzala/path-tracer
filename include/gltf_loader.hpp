@@ -17,6 +17,12 @@ struct Node
     [[nodiscard]] glm::mat4 GetWorldMatrix() const;
 };
 
+struct Mesh
+{
+    uint32_t indexCount {};
+    uint32_t firstIndex {};
+};
+
 struct Model
 {
     struct Vertex
@@ -27,9 +33,10 @@ struct Model
     std::unique_ptr<Buffer> vertexBuffer;
     std::unique_ptr<Buffer> indexBuffer;
     uint32_t verticesCount {};
-    uint32_t indicesCount {};
+    uint32_t indexCount {};
 
     std::vector<Node> nodes {};
+    std::vector<Mesh> meshes {};
 };
 
 class GLTFLoader

@@ -5,8 +5,10 @@
 #include "single_time_commands.hpp"
 #include "swap_chain.hpp"
 #include "vulkan_context.hpp"
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 
 uint64_t GetBufferDeviceAddress(vk::Buffer buffer, const std::shared_ptr<VulkanContext>& vulkanContext)
 {
@@ -27,7 +29,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     InitializeRenderTarget();
 
     _gltfLoader = std::make_unique<GLTFLoader>(_vulkanContext);
-    _gltfModel = _gltfLoader->LoadFromFile("assets/dragon/DragonAttenuation.gltf");
+    _model = _gltfLoader->LoadFromFile("assets/dragon/DragonAttenuation.gltf");
     InitializeTransformBuffer();
 
     InitializeBLAS();
@@ -164,61 +166,89 @@ void Renderer::InitializeRenderTarget()
 
 void Renderer::InitializeTransformBuffer()
 {
-    const VkTransformMatrixKHR transformMatrix = {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f
-    };
+    std::vector<vk::TransformMatrixKHR> transformMatrices {};
+    for (const auto& node : _model->nodes)
+    {
+        if (!node.meshIndex.has_value())
+        {
+            continue;
+        }
+
+        vk::TransformMatrixKHR& matrix = transformMatrices.emplace_back();
+        glm::mat3x4 transform = glm::mat3x4(glm::transpose(node.GetWorldMatrix()));
+        memcpy(&matrix, &transform, sizeof(vk::TransformMatrixKHR));
+    }
 
     // TODO: Upload to GPU friendly memory
-
     BufferCreation transformBufferCreation {};
-    transformBufferCreation.SetName("Transform Buffer")
+    transformBufferCreation.SetName("Transforms Buffer")
         .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
         .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
         .SetIsMappable(true)
-        .SetSize(sizeof(VkTransformMatrixKHR));
+        .SetSize(transformMatrices.size() * sizeof(VkTransformMatrixKHR));
 
     _transformBuffer = std::make_unique<Buffer>(transformBufferCreation, _vulkanContext);
-    memcpy(_transformBuffer->mappedPtr, &transformMatrix, sizeof(VkTransformMatrixKHR));
+    memcpy(_transformBuffer->mappedPtr, transformMatrices.data(), transformMatrices.size() * sizeof(VkTransformMatrixKHR));
 }
 
 void Renderer::InitializeBLAS()
 {
-    vk::DeviceOrHostAddressConstKHR vertexBufferDeviceAddress {};
-    vk::DeviceOrHostAddressConstKHR indexBufferDeviceAddress {};
-    vk::DeviceOrHostAddressConstKHR transformBufferDeviceAddress {};
+    uint32_t maxPrimitiveCount = 0;
+    std::vector<uint32_t> maxPrimitiveCounts {};
+    std::vector<vk::AccelerationStructureGeometryKHR> geometries {};
+    std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRangeInfos {};
 
-    vertexBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_gltfModel->vertexBuffer->buffer, _vulkanContext);
-    indexBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_gltfModel->indexBuffer->buffer, _vulkanContext);
-    transformBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_transformBuffer->buffer, _vulkanContext);
+    for (const auto& node : _model->nodes)
+    {
+        if (!node.meshIndex.has_value())
+        {
+            continue;
+        }
+        const uint32_t meshIndex = node.meshIndex.value();
+        const Mesh& mesh = _model->meshes[meshIndex];
 
-    vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData {};
-    trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
-    trianglesData.vertexData = vertexBufferDeviceAddress;
-    trianglesData.maxVertex = _gltfModel->verticesCount;
-    trianglesData.vertexStride = sizeof(Model::Vertex);
-    trianglesData.indexType = vk::IndexType::eUint32;
-    trianglesData.indexData = indexBufferDeviceAddress;
-    trianglesData.transformData.deviceAddress = 0;
-    trianglesData.transformData.hostAddress = nullptr;
-    trianglesData.transformData = transformBufferDeviceAddress;
+        vk::DeviceOrHostAddressConstKHR vertexBufferDeviceAddress {};
+        vk::DeviceOrHostAddressConstKHR indexBufferDeviceAddress {};
+        vk::DeviceOrHostAddressConstKHR transformBufferDeviceAddress {};
 
-    vk::AccelerationStructureGeometryKHR accelerationStructureGeometry {};
-    accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
-    accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eTriangles;
-    accelerationStructureGeometry.geometry.triangles = trianglesData;
+        vertexBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_model->vertexBuffer->buffer, _vulkanContext); // TODO: First vertex?
+        indexBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_model->indexBuffer->buffer, _vulkanContext) + mesh.firstIndex * sizeof(uint32_t);
+        transformBufferDeviceAddress.deviceAddress = GetBufferDeviceAddress(_transformBuffer->buffer, _vulkanContext) + static_cast<uint32_t>(geometries.size()) * sizeof(vk::TransformMatrixKHR);
+
+        vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData {};
+        trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
+        trianglesData.vertexData = vertexBufferDeviceAddress;
+        trianglesData.maxVertex = _model->verticesCount;
+        trianglesData.vertexStride = sizeof(Model::Vertex);
+        trianglesData.indexType = vk::IndexType::eUint32;
+        trianglesData.indexData = indexBufferDeviceAddress;
+        trianglesData.transformData = transformBufferDeviceAddress;
+
+        vk::AccelerationStructureGeometryKHR& accelerationStructureGeometry = geometries.emplace_back();
+        accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
+        accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eTriangles;
+        accelerationStructureGeometry.geometry.triangles = trianglesData;
+
+        uint32_t primitiveCount = mesh.indexCount / 3;
+        maxPrimitiveCounts.push_back(primitiveCount);
+        maxPrimitiveCount += primitiveCount;
+
+        vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = buildRangeInfos.emplace_back();
+        buildRangeInfo.primitiveCount = primitiveCount;
+        buildRangeInfo.primitiveOffset = 0;
+        buildRangeInfo.firstVertex = 0;
+        buildRangeInfo.transformOffset = 0;
+    }
 
     vk::AccelerationStructureBuildGeometryInfoKHR buildGeometryInfo {};
     buildGeometryInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
     buildGeometryInfo.flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
     buildGeometryInfo.mode = vk::BuildAccelerationStructureModeKHR::eBuild;
-    buildGeometryInfo.geometryCount = 1;
-    buildGeometryInfo.pGeometries = &accelerationStructureGeometry;
+    buildGeometryInfo.geometryCount = static_cast<uint32_t>(geometries.size());
+    buildGeometryInfo.pGeometries = geometries.data();
 
-    const uint32_t numTriangles = _gltfModel->indicesCount / 3;
     vk::AccelerationStructureBuildSizesInfoKHR buildSizesInfo = _vulkanContext->Device().getAccelerationStructureBuildSizesKHR(
-        vk::AccelerationStructureBuildTypeKHR::eDevice, buildGeometryInfo, numTriangles, _vulkanContext->Dldi());
+        vk::AccelerationStructureBuildTypeKHR::eDevice, buildGeometryInfo, maxPrimitiveCounts, _vulkanContext->Dldi());
 
     BufferCreation structureBufferCreation {};
     structureBufferCreation.SetName("BLAS Structure Buffer")
@@ -229,10 +259,9 @@ void Renderer::InitializeBLAS()
     _blas.structureBuffer = std::make_unique<Buffer>(structureBufferCreation, _vulkanContext);
 
     vk::AccelerationStructureCreateInfoKHR createInfo {};
-    createInfo.buffer = _blas.structureBuffer->buffer;
-    createInfo.offset = 0;
-    createInfo.size = buildSizesInfo.accelerationStructureSize;
     createInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
+    createInfo.buffer = _blas.structureBuffer->buffer;
+    createInfo.size = buildSizesInfo.accelerationStructureSize;
     _blas.vkStructure = _vulkanContext->Device().createAccelerationStructureKHR(createInfo, nullptr, _vulkanContext->Dldi());
 
     BufferCreation scratchBufferCreation {};
@@ -247,16 +276,15 @@ void Renderer::InitializeBLAS()
     buildGeometryInfo.dstAccelerationStructure = _blas.vkStructure;
     buildGeometryInfo.scratchData.deviceAddress = GetBufferDeviceAddress(_blas.scratchBuffer->buffer, _vulkanContext);
 
-    vk::AccelerationStructureBuildRangeInfoKHR buildRangeInfo {};
-    buildRangeInfo.primitiveCount = numTriangles;
-    buildRangeInfo.primitiveOffset = 0;
-    buildRangeInfo.firstVertex = 0;
-    buildRangeInfo.transformOffset = 0;
-    std::vector<vk::AccelerationStructureBuildRangeInfoKHR*> accelerationBuildStructureRangeInfos = { &buildRangeInfo };
+    std::vector<vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRangeInfos(buildRangeInfos.size());
+    for (uint32_t i = 0; i < buildRangeInfos.size(); i++)
+    {
+        pBuildRangeInfos[i] = &buildRangeInfos[i];
+    }
 
     SingleTimeCommands singleTimeCommands { _vulkanContext };
     singleTimeCommands.Record([&](vk::CommandBuffer commandBuffer)
-        { commandBuffer.buildAccelerationStructuresKHR(1, &buildGeometryInfo, accelerationBuildStructureRangeInfos.data(), _vulkanContext->Dldi()); });
+        { commandBuffer.buildAccelerationStructuresKHR(1, &buildGeometryInfo, pBuildRangeInfos.data(), _vulkanContext->Dldi()); });
     singleTimeCommands.Submit();
 }
 
@@ -352,7 +380,7 @@ void Renderer::InitializeTLAS()
 void Renderer::InitializeDescriptorSets()
 {
     CameraUniformData cameraData {};
-    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(2.0f, -2.0f, 5.5f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
+    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(-8.0f, 5.0f, 1.5f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
     cameraData.projInverse = glm::inverse(glm::perspective(glm::radians(60.0f), static_cast<float>(_windowWidth) / static_cast<float>(_windowHeight), 0.1f, 512.0f));
 
     constexpr vk::DeviceSize uniformBufferSize = sizeof(CameraUniformData);

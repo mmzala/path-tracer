@@ -3,8 +3,11 @@
 #include <spdlog/spdlog.h>
 #include <glm/gtc/type_ptr.hpp>
 
-void ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
+Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
 {
+    Mesh mesh {};
+    mesh.firstIndex = indices.size();
+
     for (auto& primitive : gltfMesh.primitives)
     {
         size_t initialVertex = vertices.size();
@@ -13,6 +16,7 @@ void ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, st
         {
             const fastgltf::Accessor& indexAccessor = gltf.accessors[primitive.indicesAccessor.value()];
             indices.reserve(indices.size() + indexAccessor.count);
+            mesh.indexCount += indexAccessor.count;
 
             fastgltf::iterateAccessor<uint32_t>(gltf, indexAccessor,
                 [&](uint32_t idx)
@@ -39,6 +43,8 @@ void ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, st
                 });
         }
     }
+
+    return mesh;
 }
 
 std::vector<Node> ProcessNodes(const fastgltf::Asset& gltf)
@@ -48,14 +54,14 @@ std::vector<Node> ProcessNodes(const fastgltf::Asset& gltf)
 
     for (const fastgltf::Node& gltfNode : gltf.nodes)
     {
-        Node node = nodes.emplace_back();
+        Node& node = nodes.emplace_back();
 
         fastgltf::math::fmat4x4 gltfTransform = fastgltf::getTransformMatrix(gltfNode);
         node.localMatrix = glm::make_mat4(gltfTransform.data());
 
-        if (node.meshIndex.has_value())
+        if (gltfNode.meshIndex.has_value())
         {
-            node.meshIndex = node.meshIndex.value();
+            node.meshIndex = gltfNode.meshIndex.value();
         }
     }
 
@@ -68,7 +74,8 @@ std::vector<Node> ProcessNodes(const fastgltf::Asset& gltf)
         // Since we have the same order in our own vector, we can use the same index to assign parents
         for (const auto& gltfNodeChildIndex : gltfNode.children)
         {
-            node.parent = &nodes[gltfNodeChildIndex];
+            Node& childNode = nodes[gltfNodeChildIndex];
+            childNode.parent = &node;
         }
     }
 
@@ -122,20 +129,18 @@ std::shared_ptr<Model> GLTFLoader::LoadFromFile(std::string_view path)
 
 std::shared_ptr<Model> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf)
 {
+    std::shared_ptr<Model> model = std::make_shared<Model>();
     std::vector<Model::Vertex> vertices {};
     std::vector<uint32_t> indices {};
 
     for (const fastgltf::Mesh& gltfMesh : gltf.meshes)
     {
-        ProcessMesh(gltf, gltfMesh, vertices, indices);
+        model->meshes.push_back(ProcessMesh(gltf, gltfMesh, vertices, indices));
     }
+    model->verticesCount = vertices.size();
+    model->indexCount = indices.size();
 
     // TODO: Upload to GPU friendly memory
-
-    std::shared_ptr<Model> model = std::make_shared<Model>();
-    model->verticesCount = vertices.size();
-    model->indicesCount = indices.size();
-
     BufferCreation vertexBufferCreation {};
     vertexBufferCreation.SetName(gltf.nodes[0].name + " - Vertex Buffer")
         .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
