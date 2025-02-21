@@ -20,16 +20,13 @@ void TopLevelAccelerationStructure::InitializeStructure(const std::vector<Bottom
     std::vector<vk::AccelerationStructureInstanceKHR> accelerationStructureInstances {};
     for (const auto& blas : blases)
     {
-        // TODO: Model matrix
-        constexpr VkTransformMatrixKHR identityMatrix = {
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f
-        };
+        vk::TransformMatrixKHR transform {};
+        const glm::mat3x4 matrix = glm::mat3x4(glm::transpose(blas.Transform()));
+        memcpy(&transform, &matrix, sizeof(vk::TransformMatrixKHR));
 
         vk::AccelerationStructureInstanceKHR& accelerationStructureInstance = accelerationStructureInstances.emplace_back();
         accelerationStructureInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR; // vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable
-        accelerationStructureInstance.transform = identityMatrix;
+        accelerationStructureInstance.transform = transform;
         accelerationStructureInstance.instanceCustomIndex = accelerationStructureInstances.size() - 1;
         accelerationStructureInstance.mask = 0xFF;
         accelerationStructureInstance.instanceShaderBindingTableRecordOffset = 0;

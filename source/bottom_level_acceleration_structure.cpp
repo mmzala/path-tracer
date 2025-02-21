@@ -5,8 +5,8 @@
 #include "single_time_commands.hpp"
 #include <glm/glm.hpp>
 
-BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(const std::shared_ptr<Model>& model, const std::shared_ptr<VulkanContext>& vulkanContext)
-    : _model(model), _vulkanContext(vulkanContext)
+BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(const std::shared_ptr<Model>& model, const std::shared_ptr<VulkanContext>& vulkanContext, const glm::mat4& transform)
+    : _transform(transform), _model(model), _vulkanContext(vulkanContext)
 {
     InitializeTransformBuffer();
     InitializeStructure();
