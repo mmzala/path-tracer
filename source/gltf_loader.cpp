@@ -8,7 +8,7 @@ Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, st
     Mesh mesh {};
     mesh.firstIndex = indices.size();
 
-    for (auto& primitive : gltfMesh.primitives)
+    for (const auto& primitive : gltfMesh.primitives)
     {
         size_t initialVertex = vertices.size();
 

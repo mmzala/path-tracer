@@ -13,7 +13,9 @@
 #include <glm/gtx/matrix_decompose.hpp>
 
 Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext)
-    : _vulkanContext(vulkanContext), _windowWidth(initInfo.width), _windowHeight(initInfo.height)
+    : _vulkanContext(vulkanContext)
+    , _windowWidth(initInfo.width)
+    , _windowHeight(initInfo.height)
 {
     _swapChain = std::make_unique<SwapChain>(vulkanContext, glm::uvec2 { initInfo.width, initInfo.height });
     InitializeCommandBuffers();
