@@ -134,6 +134,13 @@ vk::PhysicalDeviceRayTracingPipelinePropertiesKHR VulkanContext::RayTracingPipel
     return rayTracingPipelineProperties;
 }
 
+uint64_t VulkanContext::GetBufferDeviceAddress(vk::Buffer buffer) const
+{
+    vk::BufferDeviceAddressInfoKHR bufferDeviceAI {};
+    bufferDeviceAI.buffer = buffer;
+    return _device.getBufferAddressKHR(&bufferDeviceAI, _dldi);
+}
+
 void VulkanContext::InitializeInstance(const VulkanInitInfo& initInfo)
 {
     vk::ApplicationInfo appInfo {};

@@ -13,7 +13,8 @@ struct Image;
 class VulkanContext;
 class SwapChain;
 class GLTFLoader;
-struct Model;
+class BottomLevelAccelerationStructure;
+class TopLevelAccelerationStructure;
 
 class Renderer
 {
@@ -31,14 +32,6 @@ private:
         glm::vec3 position;
     };
 
-    struct AccelerationStructure
-    {
-        vk::AccelerationStructureKHR vkStructure;
-        std::unique_ptr<Buffer> structureBuffer;
-        std::unique_ptr<Buffer> scratchBuffer;
-        std::unique_ptr<Buffer> instancesBuffer;
-    };
-
     struct CameraUniformData
     {
         glm::mat4 viewInverse {};
@@ -50,9 +43,6 @@ private:
     void InitializeSynchronizationObjects();
     void InitializeRenderTarget();
 
-    void InitializeTransformBuffer();
-    void InitializeBLAS();
-    void InitializeTLAS();
     void InitializeDescriptorSets();
     void InitializePipeline();
     void InitializeShaderBindingTable();
@@ -68,11 +58,9 @@ private:
     uint32_t _currentResourcesFrame = 0;
 
     std::unique_ptr<GLTFLoader> _gltfLoader;
-    std::shared_ptr<Model> _model;
-    std::unique_ptr<Buffer> _transformBuffer;
 
-    AccelerationStructure _blas{};
-    AccelerationStructure _tlas{};
+    std::vector<std::unique_ptr<BottomLevelAccelerationStructure>> _blases {}; // TODO: Can't emplace back without pointer as vector tries to move the blas while destructing its unique ptr's ):
+    std::unique_ptr<TopLevelAccelerationStructure> _tlas;
 
     vk::DescriptorPool _descriptorPool;
     vk::DescriptorSetLayout _descriptorSetLayout;

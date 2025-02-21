@@ -43,6 +43,7 @@ public:
     [[nodiscard]] const QueueFamilyIndices& QueueFamilies() const { return _queueFamilyIndices; }
 
     [[nodiscard]] vk::PhysicalDeviceRayTracingPipelinePropertiesKHR RayTracingPipelineProperties() const;
+    [[nodiscard]] uint64_t GetBufferDeviceAddress(vk::Buffer buffer) const;
 
 private:
     vk::Instance _instance;
