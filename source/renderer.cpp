@@ -13,11 +13,8 @@
 #include <glm/gtx/matrix_decompose.hpp>
 
 Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext)
-    : _vulkanContext(vulkanContext)
+    : _vulkanContext(vulkanContext), _windowWidth(initInfo.width), _windowHeight(initInfo.height)
 {
-    _windowWidth = initInfo.width;
-    _windowHeight = initInfo.height;
-
     _swapChain = std::make_unique<SwapChain>(vulkanContext, glm::uvec2 { initInfo.width, initInfo.height });
     InitializeCommandBuffers();
     InitializeSynchronizationObjects();
@@ -148,9 +145,9 @@ void Renderer::InitializeSynchronizationObjects()
     std::string errorMsg { "[VULKAN] Failed creating sync object!" };
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
-        VkCheckResult(_vulkanContext->Device().createSemaphore(&semaphoreCreateInfo, nullptr, &_imageAvailableSemaphores[i]), errorMsg);
-        VkCheckResult(_vulkanContext->Device().createSemaphore(&semaphoreCreateInfo, nullptr, &_renderFinishedSemaphores[i]), errorMsg);
-        VkCheckResult(_vulkanContext->Device().createFence(&fenceCreateInfo, nullptr, &_inFlightFences[i]), errorMsg);
+        VkCheckResult(_vulkanContext->Device().createSemaphore(&semaphoreCreateInfo, nullptr, &_imageAvailableSemaphores.at(i)), errorMsg);
+        VkCheckResult(_vulkanContext->Device().createSemaphore(&semaphoreCreateInfo, nullptr, &_renderFinishedSemaphores.at(i)), errorMsg);
+        VkCheckResult(_vulkanContext->Device().createFence(&fenceCreateInfo, nullptr, &_inFlightFences.at(i)), errorMsg);
     }
 }
 

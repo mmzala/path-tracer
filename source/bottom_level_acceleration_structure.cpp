@@ -20,15 +20,15 @@ BottomLevelAccelerationStructure::~BottomLevelAccelerationStructure()
 }
 
 BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(BottomLevelAccelerationStructure&& other) noexcept
+    : _transform(other._transform)
+    , _model(other._model)
+    , _transformBuffer(std::move(other._transformBuffer))
+    , _vulkanContext(other._vulkanContext)
 {
     _vkStructure = other._vkStructure;
     _structureBuffer = std::move(other._structureBuffer);
     _scratchBuffer = std::move(other._scratchBuffer);
     _instancesBuffer = std::move(other._instancesBuffer);
-
-    _model = other._model;
-    _transformBuffer = std::move(other._transformBuffer);
-    _vulkanContext = other._vulkanContext;
 }
 
 void BottomLevelAccelerationStructure::InitializeTransformBuffer()

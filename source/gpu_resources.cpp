@@ -31,7 +31,7 @@ BufferCreation& BufferCreation::SetName(std::string_view name)
     return *this;
 }
 
-Buffer::Buffer(const BufferCreation& creation, std::shared_ptr<VulkanContext> vulkanContext)
+Buffer::Buffer(const BufferCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext)
 {
     vk::BufferCreateInfo bufferInfo {};
@@ -99,11 +99,9 @@ ImageCreation& ImageCreation::SetName(std::string_view name)
     return *this;
 }
 
-Image::Image(const ImageCreation& creation, std::shared_ptr<VulkanContext> vulkanContext)
-    : _vulkanContext(vulkanContext)
+Image::Image(const ImageCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext)
+    : format(creation.format), _vulkanContext(vulkanContext)
 {
-    format = creation.format;
-
     vk::ImageCreateInfo imageCreateInfo {};
     imageCreateInfo.imageType = vk::ImageType::e2D;
     imageCreateInfo.extent.width = creation.width;
