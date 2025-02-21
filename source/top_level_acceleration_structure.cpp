@@ -4,7 +4,7 @@
 #include "single_time_commands.hpp"
 #include "bottom_level_acceleration_structure.hpp"
 
-TopLevelAccelerationStructure::TopLevelAccelerationStructure(const std::vector<std::unique_ptr<BottomLevelAccelerationStructure>>& blases, const std::shared_ptr<VulkanContext>& vulkanContext)
+TopLevelAccelerationStructure::TopLevelAccelerationStructure(const std::vector<BottomLevelAccelerationStructure>& blases, const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext)
 {
     InitializeStructure(blases);
@@ -15,7 +15,7 @@ TopLevelAccelerationStructure::~TopLevelAccelerationStructure()
     _vulkanContext->Device().destroyAccelerationStructureKHR(_vkStructure, nullptr, _vulkanContext->Dldi());
 }
 
-void TopLevelAccelerationStructure::InitializeStructure(const std::vector<std::unique_ptr<BottomLevelAccelerationStructure>>& blases)
+void TopLevelAccelerationStructure::InitializeStructure(const std::vector<BottomLevelAccelerationStructure>& blases)
 {
     std::vector<vk::AccelerationStructureInstanceKHR> accelerationStructureInstances {};
     for (const auto& blas : blases)
@@ -35,7 +35,7 @@ void TopLevelAccelerationStructure::InitializeStructure(const std::vector<std::u
         accelerationStructureInstance.instanceShaderBindingTableRecordOffset = 0;
 
         vk::AccelerationStructureDeviceAddressInfoKHR blasDeviceAddress {};
-        blasDeviceAddress.accelerationStructure = blas->Structure();
+        blasDeviceAddress.accelerationStructure = blas.Structure();
         accelerationStructureInstance.accelerationStructureReference = _vulkanContext->Device().getAccelerationStructureAddressKHR(blasDeviceAddress, _vulkanContext->Dldi());
     }
 

@@ -59,7 +59,7 @@ private:
 
     std::unique_ptr<GLTFLoader> _gltfLoader;
 
-    std::vector<std::unique_ptr<BottomLevelAccelerationStructure>> _blases {}; // TODO: Can't emplace back without pointer as vector tries to move the blas while destructing its unique ptr's ):
+    std::vector<BottomLevelAccelerationStructure> _blases {};
     std::unique_ptr<TopLevelAccelerationStructure> _tlas;
 
     vk::DescriptorPool _descriptorPool;

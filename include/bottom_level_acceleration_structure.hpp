@@ -11,8 +11,9 @@ class BottomLevelAccelerationStructure : public AccelerationStructure
 public:
     BottomLevelAccelerationStructure(const std::shared_ptr<Model>& model, const std::shared_ptr<VulkanContext>& vulkanContext);
     ~BottomLevelAccelerationStructure();
+    BottomLevelAccelerationStructure(BottomLevelAccelerationStructure&& other) noexcept;
+    BottomLevelAccelerationStructure& operator=(BottomLevelAccelerationStructure&& other) = delete;
     NON_COPYABLE(BottomLevelAccelerationStructure);
-    NON_MOVABLE(BottomLevelAccelerationStructure);
 
     [[nodiscard]] vk::AccelerationStructureKHR Structure() const { return _vkStructure; }
 
