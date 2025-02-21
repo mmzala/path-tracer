@@ -1,12 +1,12 @@
 #include "renderer.hpp"
+#include "bottom_level_acceleration_structure.hpp"
 #include "gltf_loader.hpp"
 #include "gpu_resources.hpp"
 #include "shader.hpp"
 #include "single_time_commands.hpp"
 #include "swap_chain.hpp"
-#include "vulkan_context.hpp"
-#include "bottom_level_acceleration_structure.hpp"
 #include "top_level_acceleration_structure.hpp"
+#include "vulkan_context.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -25,10 +25,10 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
 
     _gltfLoader = std::make_unique<GLTFLoader>(_vulkanContext);
 
-    const std::vector<std::string> scene =
-        {
-            "assets/dragon/DragonAttenuation.gltf",
-        };
+    const std::vector<std::string> scene = {
+        "assets/dragon/DragonAttenuation.gltf",
+        "assets/cube/Cube.gltf",
+    };
     _blases.reserve(scene.size());
     for (const auto& modelPath : scene)
     {

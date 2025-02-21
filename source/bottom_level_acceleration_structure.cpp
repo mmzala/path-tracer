@@ -1,12 +1,14 @@
 #include "bottom_level_acceleration_structure.hpp"
-#include "vulkan_context.hpp"
-#include "gpu_resources.hpp"
 #include "gltf_loader.hpp"
+#include "gpu_resources.hpp"
 #include "single_time_commands.hpp"
+#include "vulkan_context.hpp"
 #include <glm/glm.hpp>
 
 BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(const std::shared_ptr<Model>& model, const std::shared_ptr<VulkanContext>& vulkanContext, const glm::mat4& transform)
-    : _transform(transform), _model(model), _vulkanContext(vulkanContext)
+    : _transform(transform)
+    , _model(model)
+    , _vulkanContext(vulkanContext)
 {
     InitializeTransformBuffer();
     InitializeStructure();

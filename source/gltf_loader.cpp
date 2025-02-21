@@ -1,7 +1,7 @@
 #include "gltf_loader.hpp"
 #include <fastgltf/tools.hpp>
-#include <spdlog/spdlog.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <spdlog/spdlog.h>
 
 Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
 {

@@ -1,8 +1,8 @@
 #include "top_level_acceleration_structure.hpp"
-#include "vulkan_context.hpp"
+#include "bottom_level_acceleration_structure.hpp"
 #include "gpu_resources.hpp"
 #include "single_time_commands.hpp"
-#include "bottom_level_acceleration_structure.hpp"
+#include "vulkan_context.hpp"
 
 TopLevelAccelerationStructure::TopLevelAccelerationStructure(const std::vector<BottomLevelAccelerationStructure>& blases, const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext)
