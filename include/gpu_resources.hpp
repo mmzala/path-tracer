@@ -24,7 +24,7 @@ struct BufferCreation
 
 struct Buffer
 {
-    Buffer(const BufferCreation& creation, std::shared_ptr<VulkanContext> vulkanContext);
+    Buffer(const BufferCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext);
     ~Buffer();
     NON_COPYABLE(Buffer);
     NON_MOVABLE(Buffer);
@@ -53,7 +53,7 @@ struct ImageCreation
 
 struct Image
 {
-    Image(const ImageCreation& creation, std::shared_ptr<VulkanContext> vulkanContext);
+    Image(const ImageCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext);
     ~Image();
     NON_COPYABLE(Image);
     NON_MOVABLE(Image);

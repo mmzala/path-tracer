@@ -31,7 +31,7 @@ BufferCreation& BufferCreation::SetName(std::string_view name)
     return *this;
 }
 
-Buffer::Buffer(const BufferCreation& creation, std::shared_ptr<VulkanContext> vulkanContext)
+Buffer::Buffer(const BufferCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext)
 {
     vk::BufferCreateInfo bufferInfo {};
@@ -48,14 +48,14 @@ Buffer::Buffer(const BufferCreation& creation, std::shared_ptr<VulkanContext> vu
         allocationInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     }
 
-    VkCheckResult(vmaCreateBuffer(_vulkanContext->MemoryAllocator(), reinterpret_cast<VkBufferCreateInfo*>(&bufferInfo), &allocationInfo, reinterpret_cast<VkBuffer*>(&buffer), &allocation, nullptr), "[VULKAN] Failed creating buffer!");
+    VkCheckResult(vmaCreateBuffer(_vulkanContext->MemoryAllocator(), reinterpret_cast<VkBufferCreateInfo*>(&bufferInfo), &allocationInfo, reinterpret_cast<VkBuffer*>(&buffer), &allocation, nullptr), "Failed creating buffer!");
     vmaSetAllocationName(_vulkanContext->MemoryAllocator(), allocation, creation.name.data());
     VkNameObject(buffer, creation.name, _vulkanContext);
 
     if (creation.isMappable)
     {
         VkCheckResult(vmaMapMemory(_vulkanContext->MemoryAllocator(), allocation, &mappedPtr),
-            "[VULKAN] Failed mapping memory for buffer: " + creation.name);
+            "Failed mapping memory for buffer: " + creation.name);
     }
 }
 
@@ -99,11 +99,10 @@ ImageCreation& ImageCreation::SetName(std::string_view name)
     return *this;
 }
 
-Image::Image(const ImageCreation& creation, std::shared_ptr<VulkanContext> vulkanContext)
-    : _vulkanContext(vulkanContext)
+Image::Image(const ImageCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext)
+    : format(creation.format)
+    , _vulkanContext(vulkanContext)
 {
-    format = creation.format;
-
     vk::ImageCreateInfo imageCreateInfo {};
     imageCreateInfo.imageType = vk::ImageType::e2D;
     imageCreateInfo.extent.width = creation.width;

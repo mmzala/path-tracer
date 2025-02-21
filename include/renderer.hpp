@@ -13,12 +13,13 @@ struct Image;
 class VulkanContext;
 class SwapChain;
 class GLTFLoader;
-struct GLTFMesh;
+class BottomLevelAccelerationStructure;
+class TopLevelAccelerationStructure;
 
 class Renderer
 {
 public:
-    Renderer(const VulkanInitInfo& initInfo, std::shared_ptr<VulkanContext> vulkanContext);
+    Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext);
     ~Renderer();
     NON_COPYABLE(Renderer);
     NON_MOVABLE(Renderer);
@@ -29,14 +30,6 @@ private:
     struct Vertex
     {
         glm::vec3 position;
-    };
-
-    struct AccelerationStructure
-    {
-        vk::AccelerationStructureKHR vkStructure;
-        std::unique_ptr<Buffer> structureBuffer;
-        std::unique_ptr<Buffer> scratchBuffer;
-        std::unique_ptr<Buffer> instancesBuffer;
     };
 
     struct CameraUniformData
@@ -50,9 +43,6 @@ private:
     void InitializeSynchronizationObjects();
     void InitializeRenderTarget();
 
-    void InitializeTransformBuffer();
-    void InitializeBLAS();
-    void InitializeTLAS();
     void InitializeDescriptorSets();
     void InitializePipeline();
     void InitializeShaderBindingTable();
@@ -68,11 +58,9 @@ private:
     uint32_t _currentResourcesFrame = 0;
 
     std::unique_ptr<GLTFLoader> _gltfLoader;
-    std::shared_ptr<GLTFMesh> _gltfMesh;
-    std::unique_ptr<Buffer> _transformBuffer;
 
-    AccelerationStructure _blas{};
-    AccelerationStructure _tlas{};
+    std::vector<BottomLevelAccelerationStructure> _blases {};
+    std::unique_ptr<TopLevelAccelerationStructure> _tlas;
 
     vk::DescriptorPool _descriptorPool;
     vk::DescriptorSetLayout _descriptorSetLayout;

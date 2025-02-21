@@ -21,7 +21,7 @@ void VkTransitionImageLayout(vk::CommandBuffer commandBuffer, vk::Image image, v
 void VkCopyImageToImage(vk::CommandBuffer commandBuffer, vk::Image srcImage, vk::Image dstImage, vk::Extent2D srcSize, vk::Extent2D dstSize);
 
 template <typename T>
-static void VkNameObject(T object, std::string_view name, std::shared_ptr<VulkanContext> context)
+static void VkNameObject(T object, std::string_view name, const std::shared_ptr<VulkanContext>& context)
 {
 #if defined(NDEBUG)
     return;
