@@ -13,7 +13,7 @@ struct Image;
 class VulkanContext;
 class SwapChain;
 class GLTFLoader;
-struct GLTFModel;
+struct Model;
 
 class Renderer
 {
@@ -68,7 +68,7 @@ private:
     uint32_t _currentResourcesFrame = 0;
 
     std::unique_ptr<GLTFLoader> _gltfLoader;
-    std::shared_ptr<GLTFModel> _gltfModel;
+    std::shared_ptr<Model> _gltfModel;
     std::unique_ptr<Buffer> _transformBuffer;
 
     AccelerationStructure _blas{};

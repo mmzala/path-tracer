@@ -8,16 +8,16 @@
 
 class VulkanContext;
 
-struct GLTFNode
+struct Node
 {
-    const GLTFNode* parent = nullptr;
+    const Node* parent = nullptr;
     glm::mat4 localMatrix {};
     std::optional<uint32_t> meshIndex {};
 
     [[nodiscard]] glm::mat4 GetWorldMatrix() const;
 };
 
-struct GLTFModel
+struct Model
 {
     struct Vertex
     {
@@ -29,7 +29,7 @@ struct GLTFModel
     uint32_t verticesCount {};
     uint32_t indicesCount {};
 
-    std::vector<GLTFNode> nodes {};
+    std::vector<Node> nodes {};
 };
 
 class GLTFLoader
@@ -40,10 +40,10 @@ public:
     NON_COPYABLE(GLTFLoader);
     NON_MOVABLE(GLTFLoader);
 
-    [[nodiscard]] std::shared_ptr<GLTFModel> LoadFromFile(std::string_view path);
+    [[nodiscard]] std::shared_ptr<Model> LoadFromFile(std::string_view path);
 
 private:
-    [[nodiscard]] std::shared_ptr<GLTFModel> ProcessModel(const fastgltf::Asset& gltf);
+    [[nodiscard]] std::shared_ptr<Model> ProcessModel(const fastgltf::Asset& gltf);
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     fastgltf::Parser _parser;

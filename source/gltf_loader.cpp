@@ -3,7 +3,7 @@
 #include <spdlog/spdlog.h>
 #include <glm/gtc/type_ptr.hpp>
 
-void ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, std::vector<GLTFModel::Vertex>& vertices, std::vector<uint32_t>& indices)
+void ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
 {
     for (auto& primitive : gltfMesh.primitives)
     {
@@ -33,7 +33,7 @@ void ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, st
             fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(gltf, positionAccessor,
                 [&](fastgltf::math::fvec3 position, size_t index)
                 {
-                    GLTFModel::Vertex vertex;
+                    Model::Vertex vertex;
                     vertex.position = glm::vec3(position.x(), position.y(), position.z());
                     vertices[initialVertex + index] = vertex;
                 });
@@ -41,14 +41,14 @@ void ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, st
     }
 }
 
-std::vector<GLTFNode> ProcessNodes(const fastgltf::Asset& gltf)
+std::vector<Node> ProcessNodes(const fastgltf::Asset& gltf)
 {
-    std::vector<GLTFNode> nodes {};
+    std::vector<Node> nodes {};
     nodes.reserve(gltf.nodes.size());
 
     for (const fastgltf::Node& gltfNode : gltf.nodes)
     {
-        GLTFNode node = nodes.emplace_back();
+        Node node = nodes.emplace_back();
 
         fastgltf::math::fmat4x4 gltfTransform = fastgltf::getTransformMatrix(gltfNode);
         node.localMatrix = glm::make_mat4(gltfTransform.data());
@@ -63,7 +63,7 @@ std::vector<GLTFNode> ProcessNodes(const fastgltf::Asset& gltf)
     for (uint32_t i = 0; i < nodes.size(); ++i)
     {
         const fastgltf::Node& gltfNode = gltf.nodes[i];
-        GLTFNode& node = nodes[i];
+        Node& node = nodes[i];
 
         // Since we have the same order in our own vector, we can use the same index to assign parents
         for (const auto& gltfNodeChildIndex : gltfNode.children)
@@ -75,10 +75,10 @@ std::vector<GLTFNode> ProcessNodes(const fastgltf::Asset& gltf)
     return nodes;
 }
 
-glm::mat4 GLTFNode::GetWorldMatrix() const
+glm::mat4 Node::GetWorldMatrix() const
 {
     glm::mat4 matrix = localMatrix;
-    const GLTFNode* p = parent;
+    const Node* p = parent;
 
     while (p)
     {
@@ -94,7 +94,7 @@ GLTFLoader::GLTFLoader(const std::shared_ptr<VulkanContext>& vulkanContext)
 {
 }
 
-std::shared_ptr<GLTFModel> GLTFLoader::LoadFromFile(std::string_view path)
+std::shared_ptr<Model> GLTFLoader::LoadFromFile(std::string_view path)
 {
     spdlog::info("[FILE] Loading GLTF file {}", path);
 
@@ -120,9 +120,9 @@ std::shared_ptr<GLTFModel> GLTFLoader::LoadFromFile(std::string_view path)
     return ProcessModel(gltf);
 }
 
-std::shared_ptr<GLTFModel> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf)
+std::shared_ptr<Model> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf)
 {
-    std::vector<GLTFModel::Vertex> vertices {};
+    std::vector<Model::Vertex> vertices {};
     std::vector<uint32_t> indices {};
 
     for (const fastgltf::Mesh& gltfMesh : gltf.meshes)
@@ -132,7 +132,7 @@ std::shared_ptr<GLTFModel> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf)
 
     // TODO: Upload to GPU friendly memory
 
-    std::shared_ptr<GLTFModel> model = std::make_shared<GLTFModel>();
+    std::shared_ptr<Model> model = std::make_shared<Model>();
     model->verticesCount = vertices.size();
     model->indicesCount = indices.size();
 
@@ -141,10 +141,10 @@ std::shared_ptr<GLTFModel> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf)
         .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
         .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
         .SetIsMappable(true)
-        .SetSize(sizeof(GLTFModel::Vertex) * vertices.size());
+        .SetSize(sizeof(Model::Vertex) * vertices.size());
 
     model->vertexBuffer = std::make_unique<Buffer>(vertexBufferCreation, _vulkanContext);
-    memcpy(model->vertexBuffer->mappedPtr, vertices.data(), sizeof(GLTFModel::Vertex) * vertices.size());
+    memcpy(model->vertexBuffer->mappedPtr, vertices.data(), sizeof(Model::Vertex) * vertices.size());
 
     BufferCreation indexBufferCreation {};
     indexBufferCreation.SetName(gltf.nodes[0].name + " - Index Buffer")

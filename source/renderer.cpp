@@ -197,7 +197,7 @@ void Renderer::InitializeBLAS()
     trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
     trianglesData.vertexData = vertexBufferDeviceAddress;
     trianglesData.maxVertex = _gltfModel->verticesCount;
-    trianglesData.vertexStride = sizeof(GLTFModel::Vertex);
+    trianglesData.vertexStride = sizeof(Model::Vertex);
     trianglesData.indexType = vk::IndexType::eUint32;
     trianglesData.indexData = indexBufferDeviceAddress;
     trianglesData.transformData.deviceAddress = 0;
