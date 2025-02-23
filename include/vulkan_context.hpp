@@ -5,9 +5,6 @@
 #include <vulkan/vulkan.hpp>
 #include "common.hpp"
 
-// CI/CD wants vk::DispatchLoaderDynamic from vk::detail, even though it exists in the vk:: namespace as well
-using namespace vk::detail;
-
 struct VulkanInitInfo
 {
     uint32_t extensionCount { 0 };
