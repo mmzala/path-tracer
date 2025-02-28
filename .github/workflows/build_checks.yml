@@ -33,11 +33,12 @@ jobs:
       - name: Setup Ninja
         uses: ashutoshvarma/setup-ninja@master
 
-      - name: Install Vulkan SDK
-        uses: humbletim/install-vulkan-sdk@main
+      - name: Setup Vulkan SDK
+        uses: humbletim/setup-vulkan-sdk@main
         with:
-          version: latest
-          cache: true
+          vulkan-query-version: latest
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
 
       # Configure, Build and Test
 
