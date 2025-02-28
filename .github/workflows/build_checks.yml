@@ -27,7 +27,9 @@ jobs:
 
       - name: Checkout Project
         uses: actions/checkout@v4
-          
+        with:
+          submodules: 'true'
+
       # Install all dependencies
 
       - name: Setup Ninja

@@ -28,10 +28,9 @@ if (WARNINGS_AS_ERRORS)
 endif ()
 
 # Add external dependencies
-find_package(Vulkan REQUIRED)
 add_subdirectory(external)
 target_link_libraries(RayTracer
-        PUBLIC Vulkan::Vulkan
+        PUBLIC VulkanAPI
         PUBLIC VulkanMemoryAllocator
 		PUBLIC spdlog::spdlog
 		PUBLIC SDL3::SDL3-static

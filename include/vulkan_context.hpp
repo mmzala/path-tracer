@@ -32,7 +32,7 @@ public:
     NON_COPYABLE(VulkanContext);
     NON_MOVABLE(VulkanContext);
 
-    [[nodiscard]] vk::DispatchLoaderDynamic Dldi() const { return _dldi; }
+    [[nodiscard]] vk::detail::DispatchLoaderDynamic Dldi() const { return _dldi; }
     [[nodiscard]] vk::PhysicalDevice PhysicalDevice() const { return _physicalDevice; }
     [[nodiscard]] vk::Device Device() const { return _device; }
     [[nodiscard]] vk::Queue GraphicsQueue() const { return _graphicsQueue; }
@@ -47,7 +47,7 @@ public:
 
 private:
     vk::Instance _instance;
-    vk::DispatchLoaderDynamic _dldi;
+    vk::detail::DispatchLoaderDynamic _dldi;
     vk::PhysicalDevice _physicalDevice;
     vk::Device _device;
     vk::Queue _graphicsQueue;
