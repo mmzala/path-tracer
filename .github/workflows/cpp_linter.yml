@@ -68,3 +68,4 @@ jobs:
             
             -modernize-use-trailing-return-type
             -readability-uppercase-literal-suffix
+            -modernize-use-trailing-return-type
