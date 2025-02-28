@@ -27,20 +27,17 @@ jobs:
 
       - name: Checkout Project
         uses: actions/checkout@v4
-        with:
-          submodules: 'true'
           
       # Install all dependencies
 
       - name: Setup Ninja
         uses: ashutoshvarma/setup-ninja@master
 
-      - name: Setup Vulkan SDK
-        uses: humbletim/setup-vulkan-sdk@main
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@main
         with:
-          vulkan-query-version: latest
-          vulkan-components: Vulkan-Headers, Vulkan-Loader
-          vulkan-use-cache: true
+          version: latest
+          cache: true
 
       # Configure, Build and Test
 
