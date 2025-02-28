@@ -1,4 +1,4 @@
-#include "gpu_resources.hpp"
+#include "resources/gpu_resources.hpp"
 #include "vk_common.hpp"
 
 BufferCreation& BufferCreation::SetSize(vk::DeviceSize size)

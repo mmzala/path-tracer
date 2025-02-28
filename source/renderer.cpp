@@ -1,7 +1,7 @@
 #include "renderer.hpp"
 #include "bottom_level_acceleration_structure.hpp"
 #include "gltf_loader.hpp"
-#include "gpu_resources.hpp"
+#include "resources/bindless_resources.hpp"
 #include "shader.hpp"
 #include "single_time_commands.hpp"
 #include "swap_chain.hpp"
@@ -22,6 +22,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     InitializeSynchronizationObjects();
     InitializeRenderTarget();
 
+    _bindlessResources = std::make_shared<BindlessResources>(_vulkanContext);
     _gltfLoader = std::make_unique<GLTFLoader>(_vulkanContext);
 
     const std::vector<std::string> scene = {

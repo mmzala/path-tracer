@@ -1,12 +1,12 @@
 #pragma once
 #include "common.hpp"
-#include "gpu_resources.hpp"
 #include <fastgltf/core.hpp>
 #include <glm/vec3.hpp>
 #include <glm/matrix.hpp>
 #include <optional>
 
 class VulkanContext;
+class Buffer;
 
 struct Node
 {

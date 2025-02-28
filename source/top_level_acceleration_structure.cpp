@@ -1,6 +1,6 @@
 #include "top_level_acceleration_structure.hpp"
 #include "bottom_level_acceleration_structure.hpp"
-#include "gpu_resources.hpp"
+#include "resources/gpu_resources.hpp"
 #include "single_time_commands.hpp"
 #include "vulkan_context.hpp"
 

@@ -27,7 +27,8 @@ struct Buffer
     Buffer(const BufferCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext);
     ~Buffer();
     NON_COPYABLE(Buffer);
-    NON_MOVABLE(Buffer);
+    Buffer(Buffer&&) noexcept = default;
+    Buffer& operator=(Buffer&&) noexcept = default;
 
     vk::Buffer buffer {};
     VmaAllocation allocation {};
@@ -56,7 +57,8 @@ struct Image
     Image(const ImageCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext);
     ~Image();
     NON_COPYABLE(Image);
-    NON_MOVABLE(Image);
+    Image(Image&&) noexcept = default;
+    Image& operator=(Image&&) noexcept = default;
 
     vk::Image image {};
     vk::ImageView view {};

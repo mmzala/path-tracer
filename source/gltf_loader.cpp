@@ -1,4 +1,5 @@
 #include "gltf_loader.hpp"
+#include "resources/gpu_resources.hpp"
 #include <fastgltf/tools.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <spdlog/spdlog.h>

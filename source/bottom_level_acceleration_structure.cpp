@@ -1,6 +1,6 @@
 #include "bottom_level_acceleration_structure.hpp"
 #include "gltf_loader.hpp"
-#include "gpu_resources.hpp"
+#include "resources/gpu_resources.hpp"
 #include "single_time_commands.hpp"
 #include "vulkan_context.hpp"
 #include <glm/glm.hpp>
