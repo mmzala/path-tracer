@@ -22,6 +22,8 @@ jobs:
 
       - name: Checkout Project
         uses: actions/checkout@v4
+        with:
+          submodules: 'true'
 
       # Install all dependencies
 
@@ -66,3 +68,4 @@ jobs:
             
             -modernize-use-trailing-return-type
             -readability-uppercase-literal-suffix
+            -modernize-use-trailing-return-type

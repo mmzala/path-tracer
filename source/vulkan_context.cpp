@@ -102,7 +102,7 @@ VulkanContext::VulkanContext(const VulkanInitInfo& initInfo)
     spdlog::info("[VULKAN] Validation layers enabled: {}", _validationLayersEnabled);
 
     InitializeInstance(initInfo);
-    _dldi = vk::DispatchLoaderDynamic { _instance, vkGetInstanceProcAddr, _device, vkGetDeviceProcAddr };
+    _dldi = vk::detail::DispatchLoaderDynamic { _instance, vkGetInstanceProcAddr, _device, vkGetDeviceProcAddr };
     InizializeValidationLayers();
     _surface = initInfo.retrieveSurface(_instance);
 
@@ -182,7 +182,7 @@ void VulkanContext::InizializeValidationLayers()
     vk::DebugUtilsMessengerCreateInfoEXT debugMessengerInfo {};
     debugMessengerInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
     debugMessengerInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance;
-    debugMessengerInfo.pfnUserCallback = ValidationLayerCallback;
+    debugMessengerInfo.pfnUserCallback = reinterpret_cast<vk::PFN_DebugUtilsMessengerCallbackEXT>(ValidationLayerCallback); // Cannot directly set as compiler thinks the function signatures don't match
     debugMessengerInfo.pUserData = nullptr;
 
     VkCheckResult(_instance.createDebugUtilsMessengerEXT(&debugMessengerInfo, nullptr, &_debugMessenger, _dldi), "Failed to create debug messenger for validation layers");

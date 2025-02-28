@@ -1,3 +1,20 @@
+# Vulkan
+
+find_package(Vulkan REQUIRED)
+add_library(VulkanAPI INTERFACE)
+
+target_link_libraries(VulkanAPI INTERFACE ${Vulkan_LIBRARY})
+target_include_directories(VulkanAPI INTERFACE Vulkan-Headers/include)
+
+if (WIN32)
+    target_compile_options(VulkanAPI
+            INTERFACE -DVK_USE_PLATFORM_WIN32_KHR
+            INTERFACE -DNOMINMAX)
+elseif (LINUX)
+    target_compile_options(VulkanAPI
+            INTERFACE -DVK_USE_PLATFORM_XLIB_KHR)
+endif ()
+
 # Vulkan Memory allocator
 
 FetchContent_Declare(
