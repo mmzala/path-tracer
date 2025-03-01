@@ -23,25 +23,60 @@ ResourceHandle<Material> MaterialResources::Create(const MaterialCreation& creat
 }
 
 BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulkanContext)
-    : _vulkanContext(vulkanContext), _imageResources(std::make_unique<ImageResources>(vulkanContext))
+    : _vulkanContext(vulkanContext), _imageResources(std::make_unique<ImageResources>(vulkanContext)), _materialResources(std::make_unique<MaterialResources>(vulkanContext))
 {
-    std::array<vk::DescriptorPoolSize, 1> poolSizes = {
-        vk::DescriptorPoolSize { vk::DescriptorType::eCombinedImageSampler, _maxResources },
+    InitializeSet();
+    InitializeMaterialBuffer();
+}
+
+BindlessResources::~BindlessResources()
+{
+    _vulkanContext->Device().destroy(_bindlessLayout);
+    _vulkanContext->Device().destroy(_bindlessPool);
+}
+
+void BindlessResources::UpdateDescriptorSet()
+{
+    UploadImages();
+    UploadMaterials();
+}
+
+void BindlessResources::UploadImages()
+{
+}
+
+void BindlessResources::UploadMaterials()
+{
+}
+
+void BindlessResources::InitializeSet()
+{
+    std::array<vk::DescriptorPoolSize, 2> poolSizes
+    {
+        vk::DescriptorPoolSize { vk::DescriptorType::eCombinedImageSampler, MAX_RESOURCES },
+        vk::DescriptorPoolSize { vk::DescriptorType::eUniformBuffer, 1 },
     };
 
     vk::DescriptorPoolCreateInfo poolCreateInfo {};
     poolCreateInfo.flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind;
-    poolCreateInfo.maxSets = _maxResources * poolSizes.size();
+    poolCreateInfo.maxSets = MAX_RESOURCES * poolSizes.size();
     poolCreateInfo.poolSizeCount = poolSizes.size();
     poolCreateInfo.pPoolSizes = poolSizes.data();
     VkCheckResult(_vulkanContext->Device().createDescriptorPool(&poolCreateInfo, nullptr, &_bindlessPool), "Failed creating bindless pool");
 
-    std::vector<vk::DescriptorSetLayoutBinding> bindings(1);
+    std::vector<vk::DescriptorSetLayoutBinding> bindings(2);
+
     vk::DescriptorSetLayoutBinding& combinedImageSampler = bindings[0];
     combinedImageSampler.descriptorType = vk::DescriptorType::eCombinedImageSampler;
-    combinedImageSampler.descriptorCount = _maxResources;
-    combinedImageSampler.binding = static_cast<uint32_t>(BindlessBinding::eImage);
+    combinedImageSampler.descriptorCount = MAX_RESOURCES;
+    combinedImageSampler.binding = static_cast<uint32_t>(BindlessBinding::eImages);
     combinedImageSampler.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
+
+    vk::DescriptorSetLayoutBinding& materialBinding = bindings[1];
+    materialBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+    materialBinding.descriptorCount = 1;
+    materialBinding.binding = static_cast<uint32_t>(BindlessBinding::eMaterials);
+    materialBinding.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
 
     vk::StructureChain<vk::DescriptorSetLayoutCreateInfo, vk::DescriptorSetLayoutBindingFlagsCreateInfo> structureChain;
 
@@ -50,8 +85,9 @@ BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulka
     layoutCreateInfo.pBindings = bindings.data();
     layoutCreateInfo.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
 
-    std::array<vk::DescriptorBindingFlagsEXT, 1> bindingFlags = {
-        vk::DescriptorBindingFlagBits::ePartiallyBound,
+    std::array<vk::DescriptorBindingFlagsEXT, 2> bindingFlags = {
+        vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
+        vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
     };
 
     auto& extInfo = structureChain.get<vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT>();
@@ -69,15 +105,14 @@ BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulka
     VkNameObject(_bindlessSet, "Bindless Set", _vulkanContext);
 }
 
-BindlessResources::~BindlessResources()
+void BindlessResources::InitializeMaterialBuffer()
 {
-    _vulkanContext->Device().destroy(_bindlessLayout);
-    _vulkanContext->Device().destroy(_bindlessPool);
-}
+    BufferCreation creation {};
+    creation.SetSize(MAX_RESOURCES * sizeof(Material))
+        .SetUsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
+        .SetName("Material buffer");
 
-void BindlessResources::UpdateDescriptorSet()
-{
-
+    _materialBuffer = std::make_unique<Buffer>(creation, _vulkanContext);
 }
 
 

@@ -37,15 +37,23 @@ public:
 private:
     enum class BindlessBinding : uint8_t
     {
-        eImage
+        eImages,
+        eMaterials,
     };
 
-    const uint32_t _maxResources = 1024;
+    static constexpr uint32_t MAX_RESOURCES = 1024;
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     std::unique_ptr<ImageResources> _imageResources;
+    std::unique_ptr<MaterialResources> _materialResources;
+    std::unique_ptr<Buffer> _materialBuffer;
 
     vk::DescriptorPool _bindlessPool;
     vk::DescriptorSetLayout _bindlessLayout;
     vk::DescriptorSet _bindlessSet;
+
+    void UploadImages();
+    void UploadMaterials();
+    void InitializeSet();
+    void InitializeMaterialBuffer();
 };
