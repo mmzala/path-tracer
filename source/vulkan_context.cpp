@@ -232,7 +232,7 @@ void VulkanContext::InitializeDevice()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features,
+    vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features, vk::PhysicalDeviceDescriptorIndexingFeatures,
         vk::PhysicalDeviceBufferDeviceAddressFeatures, vk::PhysicalDeviceAccelerationStructureFeaturesKHR, vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>
         structureChain;
 
@@ -247,6 +247,9 @@ void VulkanContext::InitializeDevice()
 
     auto& synchronization2Features = structureChain.get<vk::PhysicalDeviceSynchronization2Features>();
     synchronization2Features.synchronization2 = true;
+
+    auto& indexingFeatures = structureChain.get<vk::PhysicalDeviceDescriptorIndexingFeatures>();
+    indexingFeatures.descriptorBindingPartiallyBound = true;
 
     auto& deviceFeatures = structureChain.get<vk::PhysicalDeviceFeatures2>();
     _physicalDevice.getFeatures2(&deviceFeatures);

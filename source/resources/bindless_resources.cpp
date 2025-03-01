@@ -33,10 +33,21 @@ BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulka
     combinedImageSampler.binding = static_cast<uint32_t>(BindlessBinding::eImage);
     combinedImageSampler.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
 
-    vk::DescriptorSetLayoutCreateInfo layoutCreateInfo {};
+    vk::StructureChain<vk::DescriptorSetLayoutCreateInfo, vk::DescriptorSetLayoutBindingFlagsCreateInfo> structureChain;
+
+    auto& layoutCreateInfo = structureChain.get<vk::DescriptorSetLayoutCreateInfo>();
     layoutCreateInfo.bindingCount = bindings.size();
     layoutCreateInfo.pBindings = bindings.data();
     layoutCreateInfo.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
+
+    std::array<vk::DescriptorBindingFlagsEXT, 1> bindingFlags = {
+        vk::DescriptorBindingFlagBits::ePartiallyBound,
+    };
+
+    auto& extInfo = structureChain.get<vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT>();
+    extInfo.bindingCount = bindings.size();
+    extInfo.pBindingFlags = bindingFlags.data();
+
     _bindlessLayout = _vulkanContext->Device().createDescriptorSetLayout(layoutCreateInfo);
 
     vk::DescriptorSetAllocateInfo allocInfo {};
