@@ -1,4 +1,5 @@
 #include "resources/bindless_resources.hpp"
+#include <spdlog/spdlog.h>
 #include "vulkan_context.hpp"
 #include "vk_common.hpp"
 
@@ -47,6 +48,33 @@ void BindlessResources::UploadImages()
 
 void BindlessResources::UploadMaterials()
 {
+    if (_materialResources->GetAll().empty())
+    {
+        return;
+    }
+
+    if (_materialResources->GetAll().size() < MAX_RESOURCES)
+    {
+        spdlog::error("[RESOURCES] Material buffer is too small to fit all of the available materials");
+        return;
+    }
+
+    std::memcpy(_materialBuffer->mappedPtr, _materialResources->GetAll().data(), _materialResources->GetAll().size() * sizeof(Material));
+
+    vk::DescriptorBufferInfo bufferInfo {};
+    bufferInfo.buffer = _materialBuffer->buffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = sizeof(Material) * _materialResources->GetAll().size();
+
+    vk::WriteDescriptorSet descriptorWrite {};
+    descriptorWrite.dstSet = _bindlessSet;
+    descriptorWrite.dstBinding = static_cast<uint32_t>(BindlessBinding::eMaterials);
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+
+    _vulkanContext->Device().updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 }
 
 void BindlessResources::InitializeSet()
@@ -110,6 +138,7 @@ void BindlessResources::InitializeMaterialBuffer()
     BufferCreation creation {};
     creation.SetSize(MAX_RESOURCES * sizeof(Material))
         .SetUsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
+        .SetIsMappable(true)
         .SetName("Material buffer");
 
     _materialBuffer = std::make_unique<Buffer>(creation, _vulkanContext);
