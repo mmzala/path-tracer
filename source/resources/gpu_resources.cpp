@@ -143,3 +143,25 @@ Image::~Image()
     _vulkanContext->Device().destroy(view);
     vmaDestroyImage(_vulkanContext->MemoryAllocator(), image, allocation);
 }
+
+Material::Material(const MaterialCreation& creation)
+{
+    useAlbedoMap = !creation.albedoMap.IsNull();
+    useMetallicRoughnessMap = !creation.metallicRoughnessMap.IsNull();
+    useNormalMap = !creation.normalMap.IsNull();
+    useOcclusionMap = !creation.occlusionMap.IsNull();
+    useEmissiveMap = !creation.emissiveMap.IsNull();
+
+    albedoMapIndex = creation.albedoMap.handle;
+    metallicRoughnessMapIndex = creation.metallicRoughnessMap.handle;
+    normalMapIndex = creation.normalMap.handle;
+    occlusionMapIndex = creation.occlusionMap.handle;
+    emissiveMapIndex = creation.emissiveMap.handle;
+
+    albedoFactor = creation.albedoFactor;
+    metallicFactor = creation.metallicFactor;
+    roughnessFactor = creation.roughnessFactor;
+    normalScale = creation.normalScale;
+    occlusionStrength = creation.occlusionStrength;
+    emissiveFactor = creation.emissiveFactor;
+}

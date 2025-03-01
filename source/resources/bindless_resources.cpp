@@ -12,6 +12,16 @@ ResourceHandle<Image> ImageResources::Create(const ImageCreation& creation)
     return ResourceManager::Create(Image(creation, _vulkanContext));
 }
 
+MaterialResources::MaterialResources(const std::shared_ptr<VulkanContext>& vulkanContext)
+    : _vulkanContext(vulkanContext)
+{
+}
+
+ResourceHandle<Material> MaterialResources::Create(const MaterialCreation& creation)
+{
+    return ResourceManager::Create(Material(creation));
+}
+
 BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext), _imageResources(std::make_unique<ImageResources>(vulkanContext))
 {

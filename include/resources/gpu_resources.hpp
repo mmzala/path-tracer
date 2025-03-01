@@ -1,9 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <vulkan/vulkan.hpp>
 #include <vk_mem_alloc.h>
+#include <glm/glm.hpp>
 #include "common.hpp"
+#include "resource_manager.hpp"
 
 class VulkanContext;
 
@@ -67,4 +70,55 @@ struct Image
 
 private:
     std::shared_ptr<VulkanContext> _vulkanContext;
+};
+
+struct MaterialCreation
+{
+    ResourceHandle<Image> albedoMap = ResourceHandle<Image>::Null();
+    glm::vec4 albedoFactor { 0.0f };
+    uint32_t albedoUVChannel = 0;
+
+    ResourceHandle<Image> metallicRoughnessMap = ResourceHandle<Image>::Null();
+    float metallicFactor = 0.0f;
+    float roughnessFactor = 0.0f;
+    std::optional<uint32_t> metallicRoughnessUVChannel {};
+
+    ResourceHandle<Image> normalMap = ResourceHandle<Image>::Null();
+    float normalScale = 0.0f;
+    uint32_t normalUVChannel = 0;
+
+    ResourceHandle<Image> occlusionMap = ResourceHandle<Image>::Null();
+    float occlusionStrength = 0.0f;
+    uint32_t occlusionUVChannel = 0;
+
+    ResourceHandle<Image> emissiveMap = ResourceHandle<Image>::Null();
+    glm::vec3 emissiveFactor { 0.0f };
+    uint32_t emissiveUVChannel = 0;
+};
+
+struct Material
+{
+    Material(const MaterialCreation& creation);
+
+    glm::vec4 albedoFactor { 0.0f };
+
+    float metallicFactor = 0.0f;
+    float roughnessFactor = 0.0f;
+    float normalScale = 1.0f;
+    float occlusionStrength = 0.0f;
+
+    glm::vec3 emissiveFactor { 0.0f };
+    int32_t useEmissiveMap = false;
+
+    int32_t useAlbedoMap = false;
+    int32_t useMetallicRoughnessMap = false;
+    int32_t useNormalMap = false;
+    int32_t useOcclusionMap = false;
+
+    uint32_t albedoMapIndex = NULL_RESOURCE_INDEX_VALUE;
+    uint32_t metallicRoughnessMapIndex = NULL_RESOURCE_INDEX_VALUE;
+    uint32_t normalMapIndex = NULL_RESOURCE_INDEX_VALUE;
+    uint32_t occlusionMapIndex = NULL_RESOURCE_INDEX_VALUE;
+
+    uint32_t emissiveMapIndex = NULL_RESOURCE_INDEX_VALUE;
 };

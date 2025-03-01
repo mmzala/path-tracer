@@ -16,6 +16,16 @@ private:
     std::shared_ptr<VulkanContext> _vulkanContext;
 };
 
+class MaterialResources : public ResourceManager<Material>
+{
+public:
+    MaterialResources(const std::shared_ptr<VulkanContext>& vulkanContext);
+    ResourceHandle<Material> Create(const MaterialCreation& creation);
+
+private:
+    std::shared_ptr<VulkanContext> _vulkanContext;
+};
+
 class BindlessResources
 {
 public:

@@ -3,10 +3,15 @@
 #include <memory>
 #include <vector>
 
+constexpr uint32_t NULL_RESOURCE_INDEX_VALUE = 0xFFFF;
+
 template<typename T>
 struct ResourceHandle
 {
-    uint32_t handle;
+    static ResourceHandle<T> Null() { return ResourceHandle<T> {}; }
+    [[nodiscard]] bool IsNull() const { return handle == NULL_RESOURCE_INDEX_VALUE; }
+
+    uint32_t handle = NULL_RESOURCE_INDEX_VALUE;
 };
 
 template<typename T>
