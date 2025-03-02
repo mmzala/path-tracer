@@ -28,6 +28,17 @@ BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulka
 {
     InitializeSet();
     InitializeMaterialBuffer();
+
+    constexpr uint32_t size = 2;
+    std::vector<std::byte> data {};
+    data.assign(size * size * 4, std::byte {});
+    ImageCreation fallbackImageCreation {};
+    fallbackImageCreation.SetName("Fallback texture")
+        .SetSize(size, size)
+        .SetUsageFlags(vk::ImageUsageFlagBits::eSampled)
+        .SetFormat(vk::Format::eR8G8B8A8Unorm)
+        .SetData(data);
+    _fallbackImage = _imageResources->Create(fallbackImageCreation);
 }
 
 BindlessResources::~BindlessResources()
@@ -44,6 +55,26 @@ void BindlessResources::UpdateDescriptorSet()
 
 void BindlessResources::UploadImages()
 {
+    if (_imageResources->GetAll().empty())
+    {
+        return;
+    }
+
+    if (_imageResources->GetAll().size() < MAX_RESOURCES)
+    {
+        spdlog::error("[RESOURCES] Too many images to fit into the bindless set");
+        return;
+    }
+
+    std::array<vk::DescriptorImageInfo, MAX_RESOURCES> imageInfos {};
+    std::array<vk::WriteDescriptorSet, MAX_RESOURCES> descriptorWrites {};
+
+    for (uint32_t i = 0; i < MAX_RESOURCES; ++i)
+    {
+        // TODO: Default image and sampler, then fill image infos
+    }
+
+    _vulkanContext->Device().updateDescriptorSets(MAX_RESOURCES, descriptorWrites.data(), 0, nullptr);
 }
 
 void BindlessResources::UploadMaterials()

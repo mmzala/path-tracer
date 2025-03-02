@@ -176,3 +176,19 @@ void VkCopyImageToImage(vk::CommandBuffer commandBuffer, vk::Image srcImage, vk:
 
     commandBuffer.blitImage2(&blitInfo);
 }
+
+void VkCopyBufferToImage(vk::CommandBuffer commandBuffer, vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height)
+{
+    vk::BufferImageCopy region {};
+    region.bufferImageHeight = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = vk::Offset3D { 0, 0, 0 };
+    region.imageExtent = vk::Extent3D { width, height, 1 };
+
+    commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, 1, &region);
+}

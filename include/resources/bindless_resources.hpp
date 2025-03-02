@@ -52,6 +52,8 @@ private:
     vk::DescriptorSetLayout _bindlessLayout;
     vk::DescriptorSet _bindlessSet;
 
+    ResourceHandle<Image> _fallbackImage;
+
     void UploadImages();
     void UploadMaterials();
     void InitializeSet();

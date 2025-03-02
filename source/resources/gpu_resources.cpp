@@ -1,4 +1,5 @@
 #include "resources/gpu_resources.hpp"
+#include "single_time_commands.hpp"
 #include "vk_common.hpp"
 
 BufferCreation& BufferCreation::SetSize(vk::DeviceSize size)
@@ -74,6 +75,41 @@ Buffer::~Buffer()
     vmaDestroyBuffer(_vulkanContext->MemoryAllocator(), buffer, allocation);
 }
 
+Buffer::Buffer(Buffer&& other) noexcept
+    : buffer(other.buffer), allocation(other.allocation), mappedPtr(other.mappedPtr), _vulkanContext(other._vulkanContext)
+{
+    other.buffer = nullptr;
+    other.allocation = nullptr;
+    other.mappedPtr = nullptr;
+    other._vulkanContext = nullptr;
+}
+
+Buffer& Buffer::operator=(Buffer&& other) noexcept
+{
+    if (this == &other)
+    {
+        return *this;
+    }
+
+    buffer = other.buffer;
+    allocation = other.allocation;
+    mappedPtr = other.mappedPtr;
+    _vulkanContext = other._vulkanContext;
+
+    other.buffer = nullptr;
+    other.allocation = nullptr;
+    other.mappedPtr = nullptr;
+    other._vulkanContext = nullptr;
+
+    return *this;
+}
+
+ImageCreation& ImageCreation::SetData(const std::vector<std::byte>& data)
+{
+    this->data = data;
+    return *this;
+}
+
 ImageCreation& ImageCreation::SetSize(uint32_t width, uint32_t height)
 {
     this->width = width;
@@ -117,6 +153,11 @@ Image::Image(const ImageCreation& creation, const std::shared_ptr<VulkanContext>
     imageCreateInfo.samples = vk::SampleCountFlagBits::e1;
     imageCreateInfo.usage = creation.usage;
 
+    if (!creation.data.empty())
+    {
+        imageCreateInfo.usage |= vk::ImageUsageFlagBits::eTransferDst;
+    }
+
     VmaAllocationCreateInfo allocCreateInfo {};
     allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
@@ -135,13 +176,71 @@ Image::Image(const ImageCreation& creation, const std::shared_ptr<VulkanContext>
     viewCreateInfo.subresourceRange.layerCount = 1;
     view = _vulkanContext->Device().createImageView(viewCreateInfo);
 
+    if (!creation.data.empty())
+    {
+        vk::DeviceSize imageSize = creation.width * creation.height * 4;
+
+        BufferCreation stagingBufferCreation {};
+        stagingBufferCreation.SetName("Image staging buffer")
+            .SetSize(imageSize)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+            .SetIsMappable(true)
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc);
+        Buffer stagingBuffer(stagingBufferCreation, _vulkanContext);
+        memcpy(stagingBuffer.mappedPtr, creation.data.data(), imageSize);
+
+        SingleTimeCommands commands(_vulkanContext);
+        commands.Record([&](vk::CommandBuffer commandBuffer)
+        {
+            VkTransitionImageLayout(commandBuffer, image, format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+            VkCopyBufferToImage(commandBuffer, stagingBuffer.buffer, image, creation.width, creation.height);
+            VkTransitionImageLayout(commandBuffer, image, format, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+        });
+        commands.Submit();
+    }
+
     VkNameObject(image, creation.name, _vulkanContext);
 }
 
 Image::~Image()
 {
+    if (!_vulkanContext)
+    {
+        return;
+    }
+
     _vulkanContext->Device().destroy(view);
     vmaDestroyImage(_vulkanContext->MemoryAllocator(), image, allocation);
+}
+
+Image::Image(Image&& other) noexcept
+: image(other.image), view(other.view), allocation(other.allocation), format(other.format), _vulkanContext(other._vulkanContext)
+{
+    other.image = nullptr;
+    other.view = nullptr;
+    other.allocation = nullptr;
+    other._vulkanContext = nullptr;
+}
+
+Image& Image::operator=(Image&& other) noexcept
+{
+    if (this == &other)
+    {
+        return *this;
+    }
+
+    image = other.image;
+    view = other.view;
+    allocation = other.allocation;
+    format = other.format;
+    _vulkanContext = other._vulkanContext;
+
+    other.image = nullptr;
+    other.view = nullptr;
+    other.allocation = nullptr;
+    other._vulkanContext = nullptr;
+
+    return *this;
 }
 
 Material::Material(const MaterialCreation& creation)

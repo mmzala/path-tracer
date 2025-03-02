@@ -30,8 +30,8 @@ struct Buffer
     Buffer(const BufferCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext);
     ~Buffer();
     NON_COPYABLE(Buffer);
-    Buffer(Buffer&&) noexcept = default;
-    Buffer& operator=(Buffer&&) noexcept = default;
+    Buffer(Buffer&& other) noexcept;
+    Buffer& operator=(Buffer&& other) noexcept;
 
     vk::Buffer buffer {};
     VmaAllocation allocation {};
@@ -43,12 +43,14 @@ private:
 
 struct ImageCreation
 {
+    std::vector<std::byte> data {};
     uint32_t width {};
     uint32_t height {};
     vk::Format format = vk::Format::eUndefined;
     vk::ImageUsageFlags usage { 0 };
     std::string name {};
 
+    ImageCreation& SetData(const std::vector<std::byte>& data);
     ImageCreation& SetSize(uint32_t width, uint32_t height);
     ImageCreation& SetFormat(vk::Format format);
     ImageCreation& SetUsageFlags(vk::ImageUsageFlags usage);
@@ -60,8 +62,8 @@ struct Image
     Image(const ImageCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext);
     ~Image();
     NON_COPYABLE(Image);
-    Image(Image&&) noexcept = default;
-    Image& operator=(Image&&) noexcept = default;
+    Image(Image&& other) noexcept;
+    Image& operator=(Image&& other) noexcept;
 
     vk::Image image {};
     vk::ImageView view {};
