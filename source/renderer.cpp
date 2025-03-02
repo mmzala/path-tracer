@@ -35,6 +35,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
         std::shared_ptr<Model> model = _gltfLoader->LoadFromFile(modelPath);
         _blases.emplace_back(model, _vulkanContext);
     }
+    _bindlessResources->UpdateDescriptorSet();
 
     _tlas = std::make_unique<TopLevelAccelerationStructure>(_blases, _vulkanContext);
 

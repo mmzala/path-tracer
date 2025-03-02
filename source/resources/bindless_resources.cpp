@@ -64,7 +64,7 @@ void BindlessResources::UploadImages()
         return;
     }
 
-    if (_imageResources->GetAll().size() < MAX_RESOURCES)
+    if (_imageResources->GetAll().size() > MAX_RESOURCES)
     {
         spdlog::error("[RESOURCES] Too many images to fit into the bindless set");
         return;
@@ -75,11 +75,20 @@ void BindlessResources::UploadImages()
 
     for (uint32_t i = 0; i < MAX_RESOURCES; ++i)
     {
-        const Image& image = _imageResources->GetAll().size() < i ? _imageResources->GetAll()[i] : _imageResources->Get(_fallbackImage);
+        const Image& image = _imageResources->GetAll().size() > i ? _imageResources->GetAll()[i] : _imageResources->Get(_fallbackImage);
 
         vk::DescriptorImageInfo& imageInfo = imageInfos.at(i);
+        imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        imageInfo.imageView = image.view;
+        imageInfo.sampler = _fallbackSampler->sampler;
 
-        // TODO: Default image and sampler, then fill image infos
+        vk::WriteDescriptorSet& descriptorWrite = descriptorWrites.at(i);
+        descriptorWrite.dstSet = _bindlessSet;
+        descriptorWrite.dstBinding = static_cast<uint32_t>(BindlessBinding::eImages);
+        descriptorWrite.dstArrayElement = i;
+        descriptorWrite.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pImageInfo = &imageInfo;
     }
 
     _vulkanContext->Device().updateDescriptorSets(MAX_RESOURCES, descriptorWrites.data(), 0, nullptr);
