@@ -104,6 +104,72 @@ Buffer& Buffer::operator=(Buffer&& other) noexcept
     return *this;
 }
 
+Sampler::Sampler(const SamplerCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext)
+    : _vulkanContext(vulkanContext)
+{
+    vk::StructureChain<vk::SamplerCreateInfo, vk::SamplerReductionModeCreateInfo> structureChain {};
+    vk::SamplerCreateInfo& createInfo = structureChain.get<vk::SamplerCreateInfo>();
+    if (creation.useMaxAnisotropy)
+    {
+        auto properties = _vulkanContext->PhysicalDevice().getProperties();
+        createInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+    }
+
+    vk::SamplerReductionModeCreateInfo& reductionModeCreateInfo { structureChain.get<vk::SamplerReductionModeCreateInfo>() };
+    reductionModeCreateInfo.reductionMode = creation.reductionMode;
+
+    createInfo.addressModeU = creation.addressModeU;
+    createInfo.addressModeV = creation.addressModeV;
+    createInfo.addressModeW = creation.addressModeW;
+    createInfo.mipmapMode = creation.mipmapMode;
+    createInfo.minLod = creation.minLod;
+    createInfo.maxLod = creation.maxLod;
+    createInfo.compareOp = creation.compareOp;
+    createInfo.compareEnable = creation.compareEnable;
+    createInfo.unnormalizedCoordinates = creation.unnormalizedCoordinates;
+    createInfo.mipLodBias = creation.mipLodBias;
+    createInfo.borderColor = creation.borderColor;
+    createInfo.minFilter = creation.minFilter;
+    createInfo.magFilter = creation.magFilter;
+
+    sampler = _vulkanContext->Device().createSampler(createInfo);
+    VkNameObject(sampler, creation.name, _vulkanContext);
+}
+
+Sampler::~Sampler()
+{
+    if (!_vulkanContext)
+    {
+        return;
+    }
+
+    _vulkanContext->Device().destroy(sampler);
+}
+
+Sampler::Sampler(Sampler&& other) noexcept
+    : sampler(other.sampler)
+    , _vulkanContext(other._vulkanContext)
+{
+    other.sampler = nullptr;
+    other._vulkanContext = nullptr;
+}
+
+Sampler& Sampler::operator=(Sampler&& other) noexcept
+{
+    if (this == &other)
+    {
+        return *this;
+    }
+
+    sampler = other.sampler;
+    _vulkanContext = other._vulkanContext;
+
+    other.sampler = nullptr;
+    other._vulkanContext = nullptr;
+
+    return *this;
+}
+
 ImageCreation& ImageCreation::SetData(const std::vector<std::byte>& data)
 {
     this->data = data;

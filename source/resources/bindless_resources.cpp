@@ -29,6 +29,10 @@ BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulka
     InitializeSet();
     InitializeMaterialBuffer();
 
+    SamplerCreation fallbackSamplerCreation {};
+    fallbackSamplerCreation.name = "Fallback sampler";
+    _fallbackSampler = std::make_unique<Sampler>(fallbackSamplerCreation, _vulkanContext);
+
     constexpr uint32_t size = 2;
     std::vector<std::byte> data {};
     data.assign(size * size * 4, std::byte {});
@@ -71,6 +75,10 @@ void BindlessResources::UploadImages()
 
     for (uint32_t i = 0; i < MAX_RESOURCES; ++i)
     {
+        const Image& image = _imageResources->GetAll().size() < i ? _imageResources->GetAll()[i] : _imageResources->Get(_fallbackImage);
+
+        vk::DescriptorImageInfo& imageInfo = imageInfos.at(i);
+
         // TODO: Default image and sampler, then fill image infos
     }
 

@@ -41,6 +41,41 @@ private:
     std::shared_ptr<VulkanContext> _vulkanContext;
 };
 
+struct SamplerCreation
+{
+    vk::SamplerAddressMode addressModeU = vk::SamplerAddressMode::eRepeat;
+    vk::SamplerAddressMode addressModeW = vk::SamplerAddressMode::eRepeat;
+    vk::SamplerAddressMode addressModeV = vk::SamplerAddressMode::eRepeat;
+    vk::Filter minFilter = vk::Filter::eLinear;
+    vk::Filter magFilter = vk::Filter::eLinear;
+    bool useMaxAnisotropy = true;
+    bool anisotropyEnable = true;
+    vk::BorderColor borderColor = vk::BorderColor::eIntOpaqueBlack;
+    bool unnormalizedCoordinates = false;
+    bool compareEnable = false;
+    vk::CompareOp compareOp = vk::CompareOp::eAlways;
+    vk::SamplerMipmapMode mipmapMode = vk::SamplerMipmapMode::eLinear;
+    float mipLodBias = 0.0f;
+    float minLod = 0.0f;
+    float maxLod = 1.0f;
+    vk::SamplerReductionMode reductionMode = vk::SamplerReductionMode::eWeightedAverage;
+    std::string name {};
+};
+
+struct Sampler
+{
+    Sampler(const SamplerCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext);
+    ~Sampler();
+    NON_COPYABLE(Sampler);
+    Sampler(Sampler&& other) noexcept;
+    Sampler& operator=(Sampler&& other) noexcept;
+
+    vk::Sampler sampler;
+
+private:
+    std::shared_ptr<VulkanContext> _vulkanContext;
+};
+
 struct ImageCreation
 {
     std::vector<std::byte> data {};

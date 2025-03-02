@@ -53,6 +53,7 @@ private:
     vk::DescriptorSet _bindlessSet;
 
     ResourceHandle<Image> _fallbackImage;
+    std::unique_ptr<Sampler> _fallbackSampler;
 
     void UploadImages();
     void UploadMaterials();
