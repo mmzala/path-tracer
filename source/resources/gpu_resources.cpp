@@ -315,6 +315,102 @@ Image& Image::operator=(Image&& other) noexcept
     return *this;
 }
 
+MaterialCreation& MaterialCreation::SetAlbedoMap(ResourceHandle<Image> albedoMap)
+{
+    this->albedoMap = albedoMap;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetAlbedoFactor(const glm::vec4& albedoFactor)
+{
+    this->albedoFactor = albedoFactor;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetAlbedoUVChannel(uint32_t albedoUVChannel)
+{
+    this->albedoUVChannel = albedoUVChannel;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetMetallicRoughnessMap(ResourceHandle<Image> metallicRoughnessMap)
+{
+    this->metallicRoughnessMap = metallicRoughnessMap;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetMetallicFactor(float metallicFactor)
+{
+    this->metallicFactor = metallicFactor;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetRoughnessFactor(float roughnessFactor)
+{
+    this->roughnessFactor = roughnessFactor;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetMetallicRoughnessUVChannel(uint32_t metallicRoughnessUVChannel)
+{
+    this->metallicRoughnessUVChannel = metallicRoughnessUVChannel;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetNormalMap(ResourceHandle<Image> normalMap)
+{
+    this->normalMap = normalMap;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetNormalScale(float normalScale)
+{
+    this->normalScale = normalScale;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetNormalUVChannel(uint32_t normalUVChannel)
+{
+    this->normalUVChannel = normalUVChannel;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetOcclusionMap(ResourceHandle<Image> occlusionMap)
+{
+    this->occlusionMap = occlusionMap;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetOcclusionStrength(float occlusionStrength)
+{
+    this->occlusionStrength = occlusionStrength;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetOcclusionUVChannel(uint32_t occlusionUVChannel)
+{
+    this->occlusionUVChannel = occlusionUVChannel;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetEmissiveMap(ResourceHandle<Image> emissiveMap)
+{
+    this->emissiveMap = emissiveMap;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetEmissiveFactor(const glm::vec3& emissiveFactor)
+{
+    this->emissiveFactor = emissiveFactor;
+    return *this;
+}
+
+MaterialCreation& MaterialCreation::SetEmissiveUVChannel(uint32_t emissiveUVChannel)
+{
+    this->emissiveUVChannel = emissiveUVChannel;
+    return *this;
+}
+
 Material::Material(const MaterialCreation& creation)
 {
     useAlbedoMap = !creation.albedoMap.IsNull();

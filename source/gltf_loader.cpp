@@ -146,14 +146,14 @@ ResourceHandle<Material> ProcessMaterial(const fastgltf::Material& gltfMaterial,
         materialCreation.emissiveMap = textures[index];
     }
 
-    materialCreation.albedoFactor = glm::vec4(gltfMaterial.pbrData.baseColorFactor.x() ,gltfMaterial.pbrData.baseColorFactor.y(), gltfMaterial.pbrData.baseColorFactor.z(), gltfMaterial.pbrData.baseColorFactor.w());
-    materialCreation.metallicFactor = gltfMaterial.pbrData.metallicFactor;
-    materialCreation.roughnessFactor = gltfMaterial.pbrData.roughnessFactor;
-    materialCreation.normalScale = gltfMaterial.normalTexture.has_value() ? gltfMaterial.normalTexture.value().scale : 0.0f;
-    materialCreation.emissiveFactor = glm::vec3(gltfMaterial.emissiveFactor.x(), gltfMaterial.emissiveFactor.y(), gltfMaterial.emissiveFactor.z());
-    materialCreation.occlusionStrength = gltfMaterial.occlusionTexture.has_value()
-        ? gltfMaterial.occlusionTexture.value().strength
-        : 1.0f;
+    materialCreation.SetAlbedoFactor(glm::vec4(gltfMaterial.pbrData.baseColorFactor.x(), gltfMaterial.pbrData.baseColorFactor.y(), gltfMaterial.pbrData.baseColorFactor.z(), gltfMaterial.pbrData.baseColorFactor.w()))
+        .SetMetallicFactor(gltfMaterial.pbrData.metallicFactor)
+        .SetRoughnessFactor(gltfMaterial.pbrData.roughnessFactor)
+        .SetNormalScale(gltfMaterial.normalTexture.has_value() ? gltfMaterial.normalTexture.value().scale : 0.0f)
+        .SetEmissiveFactor(glm::vec3(gltfMaterial.emissiveFactor.x(), gltfMaterial.emissiveFactor.y(), gltfMaterial.emissiveFactor.z()))
+        .SetOcclusionStrength(gltfMaterial.occlusionTexture.has_value()
+                ? gltfMaterial.occlusionTexture.value().strength
+                : 1.0f);
 
     return resources->Materials().Create(materialCreation);
 }

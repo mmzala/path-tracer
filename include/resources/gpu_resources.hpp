@@ -131,6 +131,27 @@ struct MaterialCreation
     ResourceHandle<Image> emissiveMap = ResourceHandle<Image>::Null();
     glm::vec3 emissiveFactor { 0.0f };
     uint32_t emissiveUVChannel = 0;
+
+    MaterialCreation& SetAlbedoMap(ResourceHandle<Image> albedoMap);
+    MaterialCreation& SetAlbedoFactor(const glm::vec4& albedoFactor);
+    MaterialCreation& SetAlbedoUVChannel(uint32_t albedoUVChannel);
+
+    MaterialCreation& SetMetallicRoughnessMap(ResourceHandle<Image> metallicRoughnessMap);
+    MaterialCreation& SetMetallicFactor(float metallicFactor);
+    MaterialCreation& SetRoughnessFactor(float roughnessFactor);
+    MaterialCreation& SetMetallicRoughnessUVChannel(uint32_t metallicRoughnessUVChannel);
+
+    MaterialCreation& SetNormalMap(ResourceHandle<Image> normalMap);
+    MaterialCreation& SetNormalScale(float normalScale);
+    MaterialCreation& SetNormalUVChannel(uint32_t normalUVChannel);
+
+    MaterialCreation& SetOcclusionMap(ResourceHandle<Image> occlusionMap);
+    MaterialCreation& SetOcclusionStrength(float occlusionStrength);
+    MaterialCreation& SetOcclusionUVChannel(uint32_t occlusionUVChannel);
+
+    MaterialCreation& SetEmissiveMap(ResourceHandle<Image> emissiveMap);
+    MaterialCreation& SetEmissiveFactor(const glm::vec3& emissiveFactor);
+    MaterialCreation& SetEmissiveUVChannel(uint32_t emissiveUVChannel);
 };
 
 struct Material
