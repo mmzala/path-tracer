@@ -21,7 +21,7 @@ ResourceHandle<Image> ProcessImage(const fastgltf::Asset& gltf, const fastgltf::
         return ResourceHandle<Image> {};
     };
 
-    std::visit(
+    return std::visit(
         fastgltf::visitor {
             [&](const fastgltf::sources::URI& filePath)
             {
@@ -108,8 +108,6 @@ ResourceHandle<Image> ProcessImage(const fastgltf::Asset& gltf, const fastgltf::
             },
             failedImageLoad },
         gltfImage.data);
-
-    return ResourceHandle<Image> {};
 }
 
 ResourceHandle<Material> ProcessMaterial(const fastgltf::Material& gltfMaterial, const std::vector<ResourceHandle<Image>>& textures, const std::shared_ptr<BindlessResources>& resources)
