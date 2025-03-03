@@ -113,7 +113,8 @@ void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t s
         vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, _pipeline);
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 0, _descriptorSet, nullptr);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 0, _bindlessResources->DescriptorSet(), nullptr);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 1, _descriptorSet, nullptr);
 
     vk::StridedDeviceAddressRegionKHR callableShaderSbtEntry {};
     commandBuffer.traceRaysKHR(_raygenAddressRegion, _missAddressRegion, _hitAddressRegion, callableShaderSbtEntry, _windowWidth, _windowHeight, 1, _vulkanContext->Dldi());
@@ -322,9 +323,11 @@ void Renderer::InitializePipeline()
     group3.anyHitShader = vk::ShaderUnusedKHR;
     group3.intersectionShader = vk::ShaderUnusedKHR;
 
+    std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts { _bindlessResources->DescriptorSetLayout(), _descriptorSetLayout };
+
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo {};
-    pipelineLayoutCreateInfo.setLayoutCount = 1;
-    pipelineLayoutCreateInfo.pSetLayouts = &_descriptorSetLayout;
+    pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayouts.size();
+    pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
     pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
     _pipelineLayout = _vulkanContext->Device().createPipelineLayout(pipelineLayoutCreateInfo);

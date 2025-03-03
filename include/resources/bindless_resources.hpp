@@ -34,6 +34,8 @@ public:
     void UpdateDescriptorSet();
     [[nodiscard]] ImageResources& Images() const { return *_imageResources; }
     [[nodiscard]] MaterialResources& Materials() const { return *_materialResources; }
+    [[nodiscard]] const vk::DescriptorSetLayout& DescriptorSetLayout() const { return _bindlessLayout; }
+    [[nodiscard]] const vk::DescriptorSet& DescriptorSet() const { return _bindlessSet; }
 
 private:
     enum class BindlessBinding : uint8_t
