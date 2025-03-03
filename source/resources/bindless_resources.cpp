@@ -103,7 +103,7 @@ void BindlessResources::UploadMaterials()
         return;
     }
 
-    if (_materialResources->GetAll().size() < MAX_RESOURCES)
+    if (_materialResources->GetAll().size() > MAX_RESOURCES)
     {
         spdlog::error("[RESOURCES] Material buffer is too small to fit all of the available materials");
         return;

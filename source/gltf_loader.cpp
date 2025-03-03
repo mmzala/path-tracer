@@ -112,7 +112,53 @@ ResourceHandle<Image> ProcessImage(const fastgltf::Asset& gltf, const fastgltf::
     return ResourceHandle<Image> {};
 }
 
-Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
+ResourceHandle<Material> ProcessMaterial(const fastgltf::Material& gltfMaterial, const std::vector<ResourceHandle<Image>>& textures, const std::shared_ptr<BindlessResources>& resources)
+{
+    MaterialCreation materialCreation {};
+
+    if (gltfMaterial.pbrData.baseColorTexture.has_value())
+    {
+        uint32_t index = gltfMaterial.pbrData.baseColorTexture.value().textureIndex;
+        materialCreation.albedoMap = textures[index];
+    }
+
+    if (gltfMaterial.pbrData.metallicRoughnessTexture.has_value())
+    {
+        uint32_t index = gltfMaterial.pbrData.metallicRoughnessTexture.value().textureIndex;
+        materialCreation.metallicRoughnessMap = textures[index];
+    }
+
+    if (gltfMaterial.normalTexture.has_value())
+    {
+        uint32_t index = gltfMaterial.normalTexture.value().textureIndex;
+        materialCreation.normalMap = textures[index];
+    }
+
+    if (gltfMaterial.occlusionTexture.has_value())
+    {
+        uint32_t index = gltfMaterial.occlusionTexture.value().textureIndex;
+        materialCreation.occlusionMap = textures[index];
+    }
+
+    if (gltfMaterial.emissiveTexture.has_value())
+    {
+        uint32_t index = gltfMaterial.emissiveTexture.value().textureIndex;
+        materialCreation.emissiveMap = textures[index];
+    }
+
+    materialCreation.albedoFactor = glm::vec4(gltfMaterial.pbrData.baseColorFactor.x() ,gltfMaterial.pbrData.baseColorFactor.y(), gltfMaterial.pbrData.baseColorFactor.z(), gltfMaterial.pbrData.baseColorFactor.w());
+    materialCreation.metallicFactor = gltfMaterial.pbrData.metallicFactor;
+    materialCreation.roughnessFactor = gltfMaterial.pbrData.roughnessFactor;
+    materialCreation.normalScale = gltfMaterial.normalTexture.has_value() ? gltfMaterial.normalTexture.value().scale : 0.0f;
+    materialCreation.emissiveFactor = glm::vec3(gltfMaterial.emissiveFactor.x(), gltfMaterial.emissiveFactor.y(), gltfMaterial.emissiveFactor.z());
+    materialCreation.occlusionStrength = gltfMaterial.occlusionTexture.has_value()
+        ? gltfMaterial.occlusionTexture.value().strength
+        : 1.0f;
+
+    return resources->Materials().Create(materialCreation);
+}
+
+Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
 {
     Mesh mesh {};
     mesh.firstIndex = indices.size();
@@ -150,6 +196,19 @@ Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, st
                     vertex.position = glm::vec3(position.x(), position.y(), position.z());
                     vertices[initialVertex + index] = vertex;
                 });
+        }
+
+        // Get material
+        if (primitive.materialIndex.has_value())
+        {
+            if (mesh.material != materials[primitive.materialIndex.value()])
+            {
+                mesh.material = materials[primitive.materialIndex.value()];
+            }
+            else
+            {
+                spdlog::error("[GLTF] Mesh [{}] uses multiple different materials. This is not supported!", gltfMesh.name);
+            }
         }
     }
 
@@ -248,9 +307,14 @@ std::shared_ptr<Model> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf, con
         model->textures.push_back(ProcessImage(gltf, gltfImage, _bindlessResources, directory));
     }
 
+    for (const fastgltf::Material& gltfMaterial : gltf.materials)
+    {
+        model->materials.push_back(ProcessMaterial(gltfMaterial, model->textures, _bindlessResources));
+    }
+
     for (const fastgltf::Mesh& gltfMesh : gltf.meshes)
     {
-        model->meshes.push_back(ProcessMesh(gltf, gltfMesh, vertices, indices));
+        model->meshes.push_back(ProcessMesh(gltf, gltfMesh, model->materials, vertices, indices));
     }
 
     // Process vertex and index data

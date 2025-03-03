@@ -10,6 +10,7 @@ class VulkanContext;
 class BindlessResources;
 struct Buffer;
 struct Image;
+struct Material;
 
 struct Node
 {
@@ -24,6 +25,7 @@ struct Mesh
 {
     uint32_t indexCount {};
     uint32_t firstIndex {};
+    ResourceHandle<Material> material {};
 };
 
 struct Model
@@ -41,6 +43,7 @@ struct Model
     std::vector<Node> nodes {};
     std::vector<Mesh> meshes {};
     std::vector<ResourceHandle<Image>> textures {};
+    std::vector<ResourceHandle<Material>> materials {};
 };
 
 class GLTFLoader

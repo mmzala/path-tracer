@@ -8,6 +8,7 @@ constexpr uint32_t NULL_RESOURCE_INDEX_VALUE = 0xFFFF;
 template<typename T>
 struct ResourceHandle
 {
+    bool operator==(const ResourceHandle<T>& other) const { return handle == other.handle; }
     static ResourceHandle<T> Null() { return ResourceHandle<T> {}; }
     [[nodiscard]] bool IsNull() const { return handle == NULL_RESOURCE_INDEX_VALUE; }
 
