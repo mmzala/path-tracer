@@ -76,7 +76,10 @@ Buffer::~Buffer()
 }
 
 Buffer::Buffer(Buffer&& other) noexcept
-    : buffer(other.buffer), allocation(other.allocation), mappedPtr(other.mappedPtr), _vulkanContext(other._vulkanContext)
+    : buffer(other.buffer)
+    , allocation(other.allocation)
+    , mappedPtr(other.mappedPtr)
+    , _vulkanContext(other._vulkanContext)
 {
     other.buffer = nullptr;
     other.allocation = nullptr;
@@ -257,11 +260,10 @@ Image::Image(const ImageCreation& creation, const std::shared_ptr<VulkanContext>
 
         SingleTimeCommands commands(_vulkanContext);
         commands.Record([&](vk::CommandBuffer commandBuffer)
-        {
+            {
             VkTransitionImageLayout(commandBuffer, image, format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
             VkCopyBufferToImage(commandBuffer, stagingBuffer.buffer, image, creation.width, creation.height);
-            VkTransitionImageLayout(commandBuffer, image, format, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
-        });
+            VkTransitionImageLayout(commandBuffer, image, format, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal); });
         commands.Submit();
     }
 
@@ -280,7 +282,11 @@ Image::~Image()
 }
 
 Image::Image(Image&& other) noexcept
-: image(other.image), view(other.view), allocation(other.allocation), format(other.format), _vulkanContext(other._vulkanContext)
+    : image(other.image)
+    , view(other.view)
+    , allocation(other.allocation)
+    , format(other.format)
+    , _vulkanContext(other._vulkanContext)
 {
     other.image = nullptr;
     other.view = nullptr;

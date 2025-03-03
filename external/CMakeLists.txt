@@ -81,3 +81,17 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(FastGLTF)
+
+# STB
+
+add_library(STB INTERFACE)
+FetchContent_Declare(
+        stb
+        GIT_REPOSITORY https://github.com/nothings/stb.git
+        GIT_TAG master
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+)
+
+FetchContent_MakeAvailable(stb)
+target_include_directories(STB INTERFACE ${stb_SOURCE_DIR})

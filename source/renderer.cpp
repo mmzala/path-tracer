@@ -23,7 +23,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     InitializeRenderTarget();
 
     _bindlessResources = std::make_shared<BindlessResources>(_vulkanContext);
-    _gltfLoader = std::make_unique<GLTFLoader>(_vulkanContext);
+    _gltfLoader = std::make_unique<GLTFLoader>(_bindlessResources, _vulkanContext);
 
     const std::vector<std::string> scene = {
         "assets/dragon/DragonAttenuation.gltf",

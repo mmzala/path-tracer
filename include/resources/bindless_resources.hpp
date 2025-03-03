@@ -32,7 +32,8 @@ public:
     BindlessResources(const std::shared_ptr<VulkanContext>& vulkanContext);
     ~BindlessResources();
     void UpdateDescriptorSet();
-    const ImageResources& Images() const { return *_imageResources; }
+    [[nodiscard]] ImageResources& Images() const { return *_imageResources; }
+    [[nodiscard]] MaterialResources& Materials() const { return *_materialResources; }
 
 private:
     enum class BindlessBinding : uint8_t
