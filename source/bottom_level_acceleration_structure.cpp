@@ -1,17 +1,18 @@
 #include "bottom_level_acceleration_structure.hpp"
 #include "gltf_loader.hpp"
 #include "resources/gpu_resources.hpp"
+#include "resources/bindless_resources.hpp"
 #include "single_time_commands.hpp"
 #include "vulkan_context.hpp"
 #include <glm/glm.hpp>
 
-BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(const std::shared_ptr<Model>& model, const std::shared_ptr<VulkanContext>& vulkanContext, const glm::mat4& transform)
+BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(const std::shared_ptr<Model>& model, const std::shared_ptr<BindlessResources>& resources, const std::shared_ptr<VulkanContext>& vulkanContext, const glm::mat4& transform)
     : _transform(transform)
     , _model(model)
     , _vulkanContext(vulkanContext)
 {
     InitializeTransformBuffer();
-    InitializeStructure();
+    InitializeStructure(resources);
 }
 
 BottomLevelAccelerationStructure::~BottomLevelAccelerationStructure()
@@ -58,7 +59,7 @@ void BottomLevelAccelerationStructure::InitializeTransformBuffer()
     memcpy(_transformBuffer->mappedPtr, transformMatrices.data(), transformMatrices.size() * sizeof(VkTransformMatrixKHR));
 }
 
-void BottomLevelAccelerationStructure::InitializeStructure()
+void BottomLevelAccelerationStructure::InitializeStructure(const std::shared_ptr<BindlessResources>& resources)
 {
     uint32_t maxPrimitiveCount = 0;
     std::vector<uint32_t> maxPrimitiveCounts {};
@@ -105,6 +106,9 @@ void BottomLevelAccelerationStructure::InitializeStructure()
         buildRangeInfo.primitiveOffset = 0;
         buildRangeInfo.firstVertex = 0;
         buildRangeInfo.transformOffset = 0;
+
+        GeometryNodeCreation geometryNodeCreation { mesh.material };
+        resources->GeometryNodes().Create(geometryNodeCreation);
     }
 
     vk::AccelerationStructureBuildGeometryInfoKHR buildGeometryInfo {};

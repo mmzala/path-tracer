@@ -33,7 +33,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     for (const auto& modelPath : scene)
     {
         std::shared_ptr<Model> model = _gltfLoader->LoadFromFile(modelPath);
-        _blases.emplace_back(model, _vulkanContext);
+        _blases.emplace_back(model, _bindlessResources, _vulkanContext);
     }
     _bindlessResources->UpdateDescriptorSet();
 

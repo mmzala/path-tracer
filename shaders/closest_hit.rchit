@@ -11,7 +11,8 @@ hitAttributeEXT vec2 attribs;
 
 void main()
 {
-    Material material = materials[nonuniformEXT(0)];
+    GeometryNode geometryNode = geometryNodes[gl_GeometryIndexEXT];
+    Material material = materials[nonuniformEXT(geometryNode.materialIndex)];
 
     // TODO: UVs
 

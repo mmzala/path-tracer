@@ -56,7 +56,7 @@ private:
     static constexpr uint32_t MAX_RESOURCES = 1024;
 
     std::shared_ptr<VulkanContext> _vulkanContext;
-    // TODO: Why are those pointers?
+    // TODO: Why are these pointers?
     std::unique_ptr<ImageResources> _imageResources;
     std::unique_ptr<MaterialResources> _materialResources;
     std::unique_ptr<GeometryNodeResources> _geometryNodeResources;

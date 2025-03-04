@@ -4,13 +4,14 @@
 #include <glm/mat4x4.hpp>
 
 class VulkanContext;
+class BindlessResources;
 struct Model;
 struct Buffer;
 
 class BottomLevelAccelerationStructure : public AccelerationStructure
 {
 public:
-    BottomLevelAccelerationStructure(const std::shared_ptr<Model>& model, const std::shared_ptr<VulkanContext>& vulkanContext, const glm::mat4& transform = glm::mat4(1.0f));
+    BottomLevelAccelerationStructure(const std::shared_ptr<Model>& model, const std::shared_ptr<BindlessResources>& resources, const std::shared_ptr<VulkanContext>& vulkanContext, const glm::mat4& transform = glm::mat4(1.0f));
     ~BottomLevelAccelerationStructure();
     BottomLevelAccelerationStructure(BottomLevelAccelerationStructure&& other) noexcept;
     BottomLevelAccelerationStructure& operator=(BottomLevelAccelerationStructure&& other) = delete;
@@ -21,7 +22,7 @@ public:
 
 private:
     void InitializeTransformBuffer();
-    void InitializeStructure();
+    void InitializeStructure(const std::shared_ptr<BindlessResources>& resources);
 
     glm::mat4 _transform {};
     std::shared_ptr<Model> _model;
