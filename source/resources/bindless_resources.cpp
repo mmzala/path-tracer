@@ -25,6 +25,7 @@ ResourceHandle<Material> MaterialResources::Create(const MaterialCreation& creat
 
 ResourceHandle<GeometryNode> GeometryNodeResources::Create(const GeometryNodeCreation& creation)
 {
+    // TODO: Fallback material
     return ResourceManager::Create(GeometryNode(creation));
 }
 
