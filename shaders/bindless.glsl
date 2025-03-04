@@ -28,3 +28,12 @@ layout (std140, set = 0, binding = 1) uniform Materials
 {
     Material materials[1024];
 };
+
+struct GeometryNode
+{
+    uint materialIndex;
+};
+layout (std140, set = 0, binding = 2) uniform GeometryNodes
+{
+    GeometryNode geometryNodes[1024];
+};

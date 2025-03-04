@@ -432,3 +432,8 @@ Material::Material(const MaterialCreation& creation)
     occlusionStrength = creation.occlusionStrength;
     emissiveFactor = creation.emissiveFactor;
 }
+
+GeometryNode::GeometryNode(const GeometryNodeCreation& creation)
+{
+    materialIndex = creation.material.handle;
+}

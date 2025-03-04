@@ -156,7 +156,7 @@ struct MaterialCreation
 
 struct Material
 {
-    Material(const MaterialCreation& creation);
+    explicit Material(const MaterialCreation& creation);
 
     glm::vec4 albedoFactor { 0.0f };
 
@@ -179,4 +179,16 @@ struct Material
     uint32_t occlusionMapIndex = NULL_RESOURCE_INDEX_VALUE;
 
     uint32_t emissiveMapIndex = NULL_RESOURCE_INDEX_VALUE;
+};
+
+struct GeometryNodeCreation
+{
+    ResourceHandle<Material> material = ResourceHandle<Material>::Null();
+};
+
+struct GeometryNode
+{
+    explicit GeometryNode(const GeometryNodeCreation& creation);
+
+    uint32_t materialIndex = NULL_RESOURCE_INDEX_VALUE;
 };

@@ -23,13 +23,20 @@ ResourceHandle<Material> MaterialResources::Create(const MaterialCreation& creat
     return ResourceManager::Create(Material(creation));
 }
 
+ResourceHandle<GeometryNode> GeometryNodeResources::Create(const GeometryNodeCreation& creation)
+{
+    return ResourceManager::Create(GeometryNode(creation));
+}
+
 BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext)
     , _imageResources(std::make_unique<ImageResources>(vulkanContext))
     , _materialResources(std::make_unique<MaterialResources>(vulkanContext))
+    , _geometryNodeResources(std::make_unique<GeometryNodeResources>())
 {
     InitializeSet();
     InitializeMaterialBuffer();
+    InitializeGeometryNodeBuffer();
 
     SamplerCreation fallbackSamplerCreation {};
     fallbackSamplerCreation.name = "Fallback sampler";
@@ -57,6 +64,7 @@ void BindlessResources::UpdateDescriptorSet()
 {
     UploadImages();
     UploadMaterials();
+    UploadGeometryNodes();
 }
 
 void BindlessResources::UploadImages()
@@ -109,6 +117,7 @@ void BindlessResources::UploadMaterials()
         return;
     }
 
+    // TODO: Transfer to host memory
     std::memcpy(_materialBuffer->mappedPtr, _materialResources->GetAll().data(), _materialResources->GetAll().size() * sizeof(Material));
 
     vk::DescriptorBufferInfo bufferInfo {};
@@ -127,21 +136,53 @@ void BindlessResources::UploadMaterials()
     _vulkanContext->Device().updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 }
 
+void BindlessResources::UploadGeometryNodes()
+{
+    if (_geometryNodeResources->GetAll().empty())
+    {
+        return;
+    }
+
+    if (_geometryNodeResources->GetAll().size() > MAX_RESOURCES)
+    {
+        spdlog::error("[RESOURCES] Geometry node buffer is too small to fit all of the available nodes");
+        return;
+    }
+
+    // TODO: Transfer to host memory
+    std::memcpy(_geometryNodeBuffer->mappedPtr, _geometryNodeResources->GetAll().data(), _geometryNodeResources->GetAll().size() * sizeof(GeometryNode));
+
+    vk::DescriptorBufferInfo bufferInfo {};
+    bufferInfo.buffer = _materialBuffer->buffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = sizeof(Material) * _materialResources->GetAll().size();
+
+    vk::WriteDescriptorSet descriptorWrite {};
+    descriptorWrite.dstSet = _bindlessSet;
+    descriptorWrite.dstBinding = static_cast<uint32_t>(BindlessBinding::eGeometryNodes);
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+
+    _vulkanContext->Device().updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+}
+
 void BindlessResources::InitializeSet()
 {
     std::array<vk::DescriptorPoolSize, 2> poolSizes {
         vk::DescriptorPoolSize { vk::DescriptorType::eCombinedImageSampler, MAX_RESOURCES },
-        vk::DescriptorPoolSize { vk::DescriptorType::eUniformBuffer, 1 },
+        vk::DescriptorPoolSize { vk::DescriptorType::eUniformBuffer, 2 }, // Materials and GeometryNodes
     };
 
     vk::DescriptorPoolCreateInfo poolCreateInfo {};
     poolCreateInfo.flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind;
-    poolCreateInfo.maxSets = MAX_RESOURCES * poolSizes.size();
+    poolCreateInfo.maxSets = 1;
     poolCreateInfo.poolSizeCount = poolSizes.size();
     poolCreateInfo.pPoolSizes = poolSizes.data();
     VkCheckResult(_vulkanContext->Device().createDescriptorPool(&poolCreateInfo, nullptr, &_bindlessPool), "Failed creating bindless pool");
 
-    std::vector<vk::DescriptorSetLayoutBinding> bindings(2);
+    std::vector<vk::DescriptorSetLayoutBinding> bindings(3);
 
     vk::DescriptorSetLayoutBinding& combinedImageSampler = bindings[0];
     combinedImageSampler.descriptorType = vk::DescriptorType::eCombinedImageSampler;
@@ -155,6 +196,12 @@ void BindlessResources::InitializeSet()
     materialBinding.binding = static_cast<uint32_t>(BindlessBinding::eMaterials);
     materialBinding.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
 
+    vk::DescriptorSetLayoutBinding& geometryNodeBinding = bindings[2];
+    geometryNodeBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+    geometryNodeBinding.descriptorCount = 1;
+    geometryNodeBinding.binding = static_cast<uint32_t>(BindlessBinding::eGeometryNodes);
+    geometryNodeBinding.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
+
     vk::StructureChain<vk::DescriptorSetLayoutCreateInfo, vk::DescriptorSetLayoutBindingFlagsCreateInfo> structureChain;
 
     auto& layoutCreateInfo = structureChain.get<vk::DescriptorSetLayoutCreateInfo>();
@@ -162,7 +209,8 @@ void BindlessResources::InitializeSet()
     layoutCreateInfo.pBindings = bindings.data();
     layoutCreateInfo.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
 
-    std::array<vk::DescriptorBindingFlagsEXT, 2> bindingFlags = {
+    std::array<vk::DescriptorBindingFlagsEXT, 3> bindingFlags = {
+        vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
         vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
         vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
     };
@@ -191,4 +239,15 @@ void BindlessResources::InitializeMaterialBuffer()
         .SetName("Material buffer");
 
     _materialBuffer = std::make_unique<Buffer>(creation, _vulkanContext);
+}
+
+void BindlessResources::InitializeGeometryNodeBuffer()
+{
+    BufferCreation creation {};
+    creation.SetSize(MAX_RESOURCES * sizeof(GeometryNode))
+        .SetUsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
+        .SetIsMappable(true)
+        .SetName("GeometryNode buffer");
+
+    _geometryNodeBuffer = std::make_unique<Buffer>(creation, _vulkanContext);
 }
