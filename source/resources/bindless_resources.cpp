@@ -153,9 +153,9 @@ void BindlessResources::UploadGeometryNodes()
     std::memcpy(_geometryNodeBuffer->mappedPtr, _geometryNodeResources->GetAll().data(), _geometryNodeResources->GetAll().size() * sizeof(GeometryNode));
 
     vk::DescriptorBufferInfo bufferInfo {};
-    bufferInfo.buffer = _materialBuffer->buffer;
+    bufferInfo.buffer = _geometryNodeBuffer->buffer;
     bufferInfo.offset = 0;
-    bufferInfo.range = sizeof(Material) * _materialResources->GetAll().size();
+    bufferInfo.range = sizeof(GeometryNode) * _geometryNodeResources->GetAll().size();
 
     vk::WriteDescriptorSet descriptorWrite {};
     descriptorWrite.dstSet = _bindlessSet;

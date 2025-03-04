@@ -21,7 +21,7 @@ void main()
     {
         albedo = pow(texture(textures[nonuniformEXT(material.albedoMapIndex)], vec2(0.0)), vec4(2.2));
     }
-    albedo *= pow(material.albedoFactor, vec4(2.2));
+    albedo *= material.albedoFactor;
 
     const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
     hitValue = pow(albedo.rgb, vec3(1.0 / 2.2));
