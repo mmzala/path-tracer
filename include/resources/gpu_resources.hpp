@@ -112,7 +112,7 @@ private:
 struct MaterialCreation
 {
     ResourceHandle<Image> albedoMap = ResourceHandle<Image>::Null();
-    glm::vec4 albedoFactor { 0.0f };
+    glm::vec4 albedoFactor { 1.0f };
     uint32_t albedoUVChannel = 0;
 
     ResourceHandle<Image> metallicRoughnessMap = ResourceHandle<Image>::Null();
@@ -158,7 +158,7 @@ struct Material
 {
     explicit Material(const MaterialCreation& creation);
 
-    glm::vec4 albedoFactor { 0.0f };
+    glm::vec4 albedoFactor { 1.0f };
 
     float metallicFactor = 0.0f;
     float roughnessFactor = 0.0f;
