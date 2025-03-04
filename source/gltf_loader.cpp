@@ -2,6 +2,7 @@
 #include "resources/bindless_resources.hpp"
 #include "resources/gpu_resources.hpp"
 #include <fastgltf/tools.hpp>
+#include <fastgltf/glm_element_traits.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <spdlog/spdlog.h>
 #include <stb_image.h>
@@ -187,13 +188,39 @@ Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, co
             const fastgltf::Accessor& positionAccessor = gltf.accessors[primitive.findAttribute("POSITION")->accessorIndex];
             vertices.resize(vertices.size() + positionAccessor.count);
 
-            fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(gltf, positionAccessor,
-                [&](fastgltf::math::fvec3 position, size_t index)
+            fastgltf::iterateAccessorWithIndex<glm::vec3>(gltf, positionAccessor,
+                [&](glm::vec3 position, size_t index)
                 {
-                    Model::Vertex vertex;
-                    vertex.position = glm::vec3(position.x(), position.y(), position.z());
-                    vertices[initialVertex + index] = vertex;
+                    vertices[initialVertex + index].position = position;
                 });
+        }
+
+        // load vertex normals
+        {
+            auto normals = primitive.findAttribute("NORMAL");
+            if (normals != primitive.attributes.end())
+            {
+                const fastgltf::Accessor& normalAccessor = gltf.accessors[normals->accessorIndex];
+                fastgltf::iterateAccessorWithIndex<glm::vec3>(gltf, normalAccessor,
+                    [&](glm::vec3 normal, size_t index)
+                    {
+                        vertices[initialVertex + index].normal = normal;
+                    });
+            }
+        }
+
+        // load UVs
+        {
+            auto uvs = primitive.findAttribute("TEXCOORD_0");
+            if (uvs != primitive.attributes.end())
+            {
+                const fastgltf::Accessor& uvAccessor = gltf.accessors[uvs->accessorIndex];
+                fastgltf::iterateAccessorWithIndex<glm::vec2>(gltf, uvAccessor,
+                    [&](glm::vec2 uv, size_t index)
+                    {
+                        vertices[initialVertex + index].texCoord = uv;
+                    });
+            }
         }
 
         // Get material
