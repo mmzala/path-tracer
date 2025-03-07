@@ -192,3 +192,12 @@ void VkCopyBufferToImage(vk::CommandBuffer commandBuffer, vk::Buffer buffer, vk:
 
     commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, 1, &region);
 }
+
+void VkCopyBufferToBuffer(vk::CommandBuffer commandBuffer, vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size, uint32_t offset)
+{
+    vk::BufferCopy copyRegion {};
+    copyRegion.srcOffset = 0;
+    copyRegion.dstOffset = offset;
+    copyRegion.size = size;
+    commandBuffer.copyBuffer(srcBuffer, dstBuffer, 1, &copyRegion);
+}

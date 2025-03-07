@@ -435,5 +435,7 @@ Material::Material(const MaterialCreation& creation)
 
 GeometryNode::GeometryNode(const GeometryNodeCreation& creation)
 {
+    vertexBufferDeviceAddress = creation.vertexBufferDeviceAddress;
+    indexBufferDeviceAddress = creation.indexBufferDeviceAddress;
     materialIndex = creation.material.handle;
 }

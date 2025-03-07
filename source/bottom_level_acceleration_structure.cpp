@@ -107,7 +107,10 @@ void BottomLevelAccelerationStructure::InitializeStructure(const std::shared_ptr
         buildRangeInfo.firstVertex = 0;
         buildRangeInfo.transformOffset = 0;
 
-        GeometryNodeCreation geometryNodeCreation { mesh.material };
+        GeometryNodeCreation geometryNodeCreation {};
+        geometryNodeCreation.material = mesh.material;
+        geometryNodeCreation.vertexBufferDeviceAddress = vertexBufferDeviceAddress.deviceAddress;
+        geometryNodeCreation.indexBufferDeviceAddress = indexBufferDeviceAddress.deviceAddress;
         resources->GeometryNodes().Create(geometryNodeCreation);
     }
 

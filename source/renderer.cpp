@@ -26,7 +26,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     _gltfLoader = std::make_unique<GLTFLoader>(_bindlessResources, _vulkanContext);
 
     const std::vector<std::string> scene = {
-        "assets/dragon/DragonAttenuation.gltf",
+        //"assets/dragon/DragonAttenuation.gltf",
         "assets/cube/Cube.gltf",
     };
     _blases.reserve(scene.size());
