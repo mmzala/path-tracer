@@ -1,4 +1,6 @@
 #include "gltf_loader.hpp"
+#include "single_time_commands.hpp"
+#include "vk_common.hpp"
 #include "resources/bindless_resources.hpp"
 #include "resources/gpu_resources.hpp"
 #include <fastgltf/tools.hpp>
@@ -347,26 +349,49 @@ std::shared_ptr<Model> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf, con
         model->verticesCount = vertices.size();
         model->indexCount = indices.size();
 
-        // TODO: Upload to GPU friendly memory
-        BufferCreation vertexBufferCreation {};
-        vertexBufferCreation.SetName(gltf.nodes[0].name + " - Vertex Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
+        // Staging buffers
+        BufferCreation vertexStagingBufferCreation {};
+        vertexStagingBufferCreation.SetName(gltf.nodes[0].name + " - Vertex Staging Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
             .SetIsMappable(true)
             .SetSize(sizeof(Model::Vertex) * vertices.size());
+        Buffer vertexStagingBuffer(vertexStagingBufferCreation, _vulkanContext);
+        memcpy(vertexStagingBuffer.mappedPtr, vertices.data(), sizeof(Model::Vertex) * vertices.size());
 
+        BufferCreation indexStagingBufferCreation {};
+        indexStagingBufferCreation.SetName(gltf.nodes[0].name + " - Index Staging Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+            .SetIsMappable(true)
+            .SetSize(sizeof(uint32_t) * indices.size());
+        Buffer indexStagingBuffer(indexStagingBufferCreation, _vulkanContext);
+        memcpy(indexStagingBuffer.mappedPtr, indices.data(), sizeof(uint32_t) * indices.size());
+
+        // GPU buffers
+        BufferCreation vertexBufferCreation {};
+        vertexBufferCreation.SetName(gltf.nodes[0].name + " - Vertex Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+            .SetIsMappable(false)
+            .SetSize(sizeof(Model::Vertex) * vertices.size());
         model->vertexBuffer = std::make_unique<Buffer>(vertexBufferCreation, _vulkanContext);
-        memcpy(model->vertexBuffer->mappedPtr, vertices.data(), sizeof(Model::Vertex) * vertices.size());
 
         BufferCreation indexBufferCreation {};
         indexBufferCreation.SetName(gltf.nodes[0].name + " - Index Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
+            .SetUsageFlags(vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
             .SetIsMappable(true)
             .SetSize(sizeof(uint32_t) * indices.size());
-
         model->indexBuffer = std::make_unique<Buffer>(indexBufferCreation, _vulkanContext);
-        memcpy(model->indexBuffer->mappedPtr, indices.data(), sizeof(uint32_t) * indices.size());
+
+        SingleTimeCommands commands(_vulkanContext);
+        commands.Record([&](vk::CommandBuffer commandBuffer)
+            {
+                VkCopyBufferToBuffer(commandBuffer, vertexStagingBuffer.buffer, model->vertexBuffer->buffer, sizeof(Model::Vertex) * vertices.size());
+                VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, model->indexBuffer->buffer, sizeof(uint32_t) * indices.size());
+            });
+        commands.Submit();
     }
 
     model->nodes = ProcessNodes(gltf);
