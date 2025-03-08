@@ -113,37 +113,42 @@ ResourceHandle<Image> ProcessImage(const fastgltf::Asset& gltf, const fastgltf::
         gltfImage.data);
 }
 
-ResourceHandle<Material> ProcessMaterial(const fastgltf::Material& gltfMaterial, const std::vector<ResourceHandle<Image>>& textures, const std::shared_ptr<BindlessResources>& resources)
+ResourceHandle<Material> ProcessMaterial(const fastgltf::Material& gltfMaterial, const std::vector<fastgltf::Texture>& gltfTextures, const std::vector<ResourceHandle<Image>>& textures, const std::shared_ptr<BindlessResources>& resources)
 {
+    auto MapTextureIndexToImageIndex = [](uint32_t textureIndex, const std::vector<fastgltf::Texture>& gltfTextures) -> uint32_t
+    {
+        return gltfTextures[textureIndex].imageIndex.value();
+    };
+
     MaterialCreation materialCreation {};
 
     if (gltfMaterial.pbrData.baseColorTexture.has_value())
     {
-        uint32_t index = gltfMaterial.pbrData.baseColorTexture.value().textureIndex;
+        uint32_t index = MapTextureIndexToImageIndex(gltfMaterial.pbrData.baseColorTexture.value().textureIndex, gltfTextures);
         materialCreation.albedoMap = textures[index];
     }
 
     if (gltfMaterial.pbrData.metallicRoughnessTexture.has_value())
     {
-        uint32_t index = gltfMaterial.pbrData.metallicRoughnessTexture.value().textureIndex;
+        uint32_t index = MapTextureIndexToImageIndex(gltfMaterial.pbrData.metallicRoughnessTexture.value().textureIndex, gltfTextures);
         materialCreation.metallicRoughnessMap = textures[index];
     }
 
     if (gltfMaterial.normalTexture.has_value())
     {
-        uint32_t index = gltfMaterial.normalTexture.value().textureIndex;
+        uint32_t index = MapTextureIndexToImageIndex(gltfMaterial.normalTexture.value().textureIndex, gltfTextures);
         materialCreation.normalMap = textures[index];
     }
 
     if (gltfMaterial.occlusionTexture.has_value())
     {
-        uint32_t index = gltfMaterial.occlusionTexture.value().textureIndex;
+        uint32_t index = MapTextureIndexToImageIndex(gltfMaterial.occlusionTexture.value().textureIndex, gltfTextures);
         materialCreation.occlusionMap = textures[index];
     }
 
     if (gltfMaterial.emissiveTexture.has_value())
     {
-        uint32_t index = gltfMaterial.emissiveTexture.value().textureIndex;
+        uint32_t index = MapTextureIndexToImageIndex(gltfMaterial.emissiveTexture.value().textureIndex, gltfTextures);
         materialCreation.emissiveMap = textures[index];
     }
 
@@ -228,7 +233,7 @@ Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, co
         // Get material
         if (primitive.materialIndex.has_value())
         {
-            if (mesh.material != materials[primitive.materialIndex.value()])
+            if (mesh.material.IsNull())
             {
                 mesh.material = materials[primitive.materialIndex.value()];
             }
@@ -326,8 +331,6 @@ std::shared_ptr<Model> GLTFLoader::LoadFromFile(std::string_view path)
 std::shared_ptr<Model> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf, const std::string_view directory)
 {
     std::shared_ptr<Model> model = std::make_shared<Model>();
-    std::vector<Model::Vertex> vertices {};
-    std::vector<uint32_t> indices {};
 
     for (const fastgltf::Image& gltfImage : gltf.images)
     {
@@ -336,8 +339,11 @@ std::shared_ptr<Model> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf, con
 
     for (const fastgltf::Material& gltfMaterial : gltf.materials)
     {
-        model->materials.push_back(ProcessMaterial(gltfMaterial, model->textures, _bindlessResources));
+        model->materials.push_back(ProcessMaterial(gltfMaterial, gltf.textures, model->textures, _bindlessResources));
     }
+
+    std::vector<Model::Vertex> vertices {};
+    std::vector<uint32_t> indices {};
 
     for (const fastgltf::Mesh& gltfMesh : gltf.meshes)
     {
@@ -369,9 +375,11 @@ std::shared_ptr<Model> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf, con
         memcpy(indexStagingBuffer.mappedPtr, indices.data(), sizeof(uint32_t) * indices.size());
 
         // GPU buffers
+        vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
+
         BufferCreation vertexBufferCreation {};
         vertexBufferCreation.SetName(gltf.nodes[0].name + " - Vertex Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
+            .SetUsageFlags(vk::BufferUsageFlagBits::eVertexBuffer | bufferUsage)
             .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
             .SetIsMappable(false)
             .SetSize(sizeof(Model::Vertex) * vertices.size());
@@ -379,9 +387,9 @@ std::shared_ptr<Model> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf, con
 
         BufferCreation indexBufferCreation {};
         indexBufferCreation.SetName(gltf.nodes[0].name + " - Index Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
-            .SetIsMappable(true)
+            .SetUsageFlags(vk::BufferUsageFlagBits::eIndexBuffer | bufferUsage)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+            .SetIsMappable(false)
             .SetSize(sizeof(uint32_t) * indices.size());
         model->indexBuffer = std::make_unique<Buffer>(indexBufferCreation, _vulkanContext);
 

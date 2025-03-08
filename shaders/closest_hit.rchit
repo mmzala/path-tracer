@@ -51,6 +51,7 @@ void main()
     vec4 albedo = vec4(1.0);
     if (material.useAlbedoMap)
     {
+        // TODO: Textures are not correctly sampled somehow and it crashes the program
         albedo = pow(texture(textures[nonuniformEXT(material.albedoMapIndex)], triangle.texCoord), vec4(2.2));
     }
     albedo *= material.albedoFactor;
