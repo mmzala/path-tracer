@@ -1,10 +1,10 @@
 #include "gltf_loader.hpp"
-#include "single_time_commands.hpp"
-#include "vk_common.hpp"
 #include "resources/bindless_resources.hpp"
 #include "resources/gpu_resources.hpp"
-#include <fastgltf/tools.hpp>
+#include "single_time_commands.hpp"
+#include "vk_common.hpp"
 #include <fastgltf/glm_element_traits.hpp>
+#include <fastgltf/tools.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <spdlog/spdlog.h>
 #include <stb_image.h>
@@ -397,8 +397,7 @@ std::shared_ptr<Model> GLTFLoader::ProcessModel(const fastgltf::Asset& gltf, con
         commands.Record([&](vk::CommandBuffer commandBuffer)
             {
                 VkCopyBufferToBuffer(commandBuffer, vertexStagingBuffer.buffer, model->vertexBuffer->buffer, sizeof(Model::Vertex) * vertices.size());
-                VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, model->indexBuffer->buffer, sizeof(uint32_t) * indices.size());
-            });
+                VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, model->indexBuffer->buffer, sizeof(uint32_t) * indices.size()); });
         commands.Submit();
     }
 
