@@ -179,6 +179,7 @@ struct Material
     uint32_t occlusionMapIndex = NULL_RESOURCE_INDEX_VALUE;
 
     uint32_t emissiveMapIndex = NULL_RESOURCE_INDEX_VALUE;
+    glm::vec3 _PADDING_{};
 };
 
 struct GeometryNodeCreation
@@ -195,4 +196,5 @@ struct GeometryNode
     uint64_t vertexBufferDeviceAddress = 0;
     uint64_t indexBufferDeviceAddress = 0;
     uint32_t materialIndex = NULL_RESOURCE_INDEX_VALUE;
+    glm::vec3 _PADDING_{};
 };

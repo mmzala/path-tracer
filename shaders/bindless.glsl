@@ -12,6 +12,7 @@ struct Material
     vec3 emissiveFactor;
     bool useEmissiveMap;
 
+    // TODO: Use flags to check usage
     bool useAlbedoMap;
     bool useMRMap;
     bool useNormalMap;
