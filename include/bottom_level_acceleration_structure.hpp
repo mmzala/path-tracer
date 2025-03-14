@@ -19,12 +19,15 @@ public:
 
     [[nodiscard]] vk::AccelerationStructureKHR Structure() const { return _vkStructure; }
     [[nodiscard]] const glm::mat4& Transform() const { return _transform; }
+    [[nodiscard]] uint32_t GeometryCount() const { return _geometryCount; }
 
 private:
     void InitializeTransformBuffer();
     void InitializeStructure(const std::shared_ptr<BindlessResources>& resources);
 
     glm::mat4 _transform {};
+    uint32_t _geometryCount {};
+
     std::shared_ptr<Model> _model;
     std::unique_ptr<Buffer> _transformBuffer;
 

@@ -114,6 +114,8 @@ void BottomLevelAccelerationStructure::InitializeStructure(const std::shared_ptr
         resources->GeometryNodes().Create(geometryNodeCreation);
     }
 
+    _geometryCount = geometries.size();
+
     vk::AccelerationStructureBuildGeometryInfoKHR buildGeometryInfo {};
     buildGeometryInfo.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
     buildGeometryInfo.flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;

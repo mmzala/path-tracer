@@ -30,15 +30,22 @@ ResourceHandle<GeometryNode> GeometryNodeResources::Create(const GeometryNodeCre
     return ResourceManager::Create(GeometryNode(creation));
 }
 
+ResourceHandle<BLASInstance> BLASInstanceResources::Create(const BLASInstanceCreation& creation)
+{
+    return ResourceManager::Create(BLASInstance(creation));
+}
+
 BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext)
     , _imageResources(std::make_unique<ImageResources>(vulkanContext))
     , _materialResources(std::make_unique<MaterialResources>(vulkanContext))
     , _geometryNodeResources(std::make_unique<GeometryNodeResources>())
+    , _blasInstanceResources(std::make_unique<BLASInstanceResources>())
 {
     InitializeSet();
     InitializeMaterialBuffer();
     InitializeGeometryNodeBuffer();
+    InitializeBLASInstanceBuffer();
 
     SamplerCreation fallbackSamplerCreation {};
     fallbackSamplerCreation.name = "Fallback sampler";
@@ -67,6 +74,7 @@ void BindlessResources::UpdateDescriptorSet()
     UploadImages();
     UploadMaterials();
     UploadGeometryNodes();
+    UploadBLASInstances();
 }
 
 void BindlessResources::UploadImages()
@@ -184,12 +192,58 @@ void BindlessResources::UploadGeometryNodes()
     _vulkanContext->Device().updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
 }
 
+void BindlessResources::UploadBLASInstances()
+{
+    if (_blasInstanceResources->GetAll().empty())
+    {
+        return;
+    }
+
+    if (_blasInstanceResources->GetAll().size() > MAX_RESOURCES)
+    {
+        spdlog::error("[RESOURCES] BLAS instance buffer is too small to fit all of the available BLASes");
+        return;
+    }
+
+    vk::DeviceSize bufferSize = _blasInstanceResources->GetAll().size() * sizeof(BLASInstance);
+    BufferCreation stagingBufferCreation {};
+    stagingBufferCreation.SetSize(bufferSize)
+        .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+        .SetIsMappable(true)
+        .SetName("BLASInstance staging buffer");
+    Buffer stagingBuffer(stagingBufferCreation, _vulkanContext);
+    std::memcpy(stagingBuffer.mappedPtr, _blasInstanceResources->GetAll().data(), bufferSize);
+
+    SingleTimeCommands commands(_vulkanContext);
+    commands.Record([&](vk::CommandBuffer commandBuffer)
+        {
+            VkCopyBufferToBuffer(commandBuffer, stagingBuffer.buffer, _blasInstanceBuffer->buffer, bufferSize);
+        });
+    commands.Submit();
+
+    vk::DescriptorBufferInfo bufferInfo {};
+    bufferInfo.buffer = _blasInstanceBuffer->buffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = bufferSize;
+
+    vk::WriteDescriptorSet descriptorWrite {};
+    descriptorWrite.dstSet = _bindlessSet;
+    descriptorWrite.dstBinding = static_cast<uint32_t>(BindlessBinding::eBLASInstances);
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = vk::DescriptorType::eStorageBuffer;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+
+    _vulkanContext->Device().updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+}
+
 void BindlessResources::InitializeSet()
 {
     std::array<vk::DescriptorPoolSize, 3> poolSizes {
         vk::DescriptorPoolSize { vk::DescriptorType::eCombinedImageSampler, MAX_RESOURCES },
         vk::DescriptorPoolSize { vk::DescriptorType::eUniformBuffer, 1 },
-        vk::DescriptorPoolSize { vk::DescriptorType::eStorageBuffer, 1 },
+        vk::DescriptorPoolSize { vk::DescriptorType::eStorageBuffer, 2 }, // GeometryNode and BLASInstance
     };
 
     vk::DescriptorPoolCreateInfo poolCreateInfo {};
@@ -199,7 +253,7 @@ void BindlessResources::InitializeSet()
     poolCreateInfo.pPoolSizes = poolSizes.data();
     VkCheckResult(_vulkanContext->Device().createDescriptorPool(&poolCreateInfo, nullptr, &_bindlessPool), "Failed creating bindless pool");
 
-    std::vector<vk::DescriptorSetLayoutBinding> bindings(3);
+    std::vector<vk::DescriptorSetLayoutBinding> bindings(4);
 
     vk::DescriptorSetLayoutBinding& combinedImageSampler = bindings[0];
     combinedImageSampler.descriptorType = vk::DescriptorType::eCombinedImageSampler;
@@ -219,6 +273,12 @@ void BindlessResources::InitializeSet()
     geometryNodeBinding.binding = static_cast<uint32_t>(BindlessBinding::eGeometryNodes);
     geometryNodeBinding.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
 
+    vk::DescriptorSetLayoutBinding& blasInstanceBinding = bindings[3];
+    blasInstanceBinding.descriptorType = vk::DescriptorType::eStorageBuffer;
+    blasInstanceBinding.descriptorCount = 1;
+    blasInstanceBinding.binding = static_cast<uint32_t>(BindlessBinding::eBLASInstances);
+    blasInstanceBinding.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
+
     vk::StructureChain<vk::DescriptorSetLayoutCreateInfo, vk::DescriptorSetLayoutBindingFlagsCreateInfo> structureChain;
 
     auto& layoutCreateInfo = structureChain.get<vk::DescriptorSetLayoutCreateInfo>();
@@ -226,7 +286,8 @@ void BindlessResources::InitializeSet()
     layoutCreateInfo.pBindings = bindings.data();
     layoutCreateInfo.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
 
-    std::array<vk::DescriptorBindingFlagsEXT, 3> bindingFlags = {
+    std::array<vk::DescriptorBindingFlagsEXT, 4> bindingFlags = {
+        vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
         vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
         vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
         vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
@@ -268,4 +329,16 @@ void BindlessResources::InitializeGeometryNodeBuffer()
         .SetName("GeometryNode buffer");
 
     _geometryNodeBuffer = std::make_unique<Buffer>(creation, _vulkanContext);
+}
+
+void BindlessResources::InitializeBLASInstanceBuffer()
+{
+    BufferCreation creation {};
+    creation.SetSize(MAX_RESOURCES * sizeof(BLASInstance))
+        .SetUsageFlags(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+        .SetIsMappable(false)
+        .SetName("BLASInstance buffer");
+
+    _blasInstanceBuffer = std::make_unique<Buffer>(creation, _vulkanContext);
 }

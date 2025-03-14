@@ -28,7 +28,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     const std::vector<std::string> scene = {
         // "assets/helmet/FlightHelmet.gltf",
         "assets/dragon/DragonAttenuation.gltf",
-        //"assets/cube/Cube.gltf",
+        "assets/cube/Cube.gltf",
     };
     _blases.reserve(scene.size());
     for (const auto& modelPath : scene)
@@ -36,9 +36,9 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
         std::shared_ptr<Model> model = _gltfLoader->LoadFromFile(modelPath);
         _blases.emplace_back(model, _bindlessResources, _vulkanContext);
     }
-    _bindlessResources->UpdateDescriptorSet();
 
-    _tlas = std::make_unique<TopLevelAccelerationStructure>(_blases, _vulkanContext);
+    _tlas = std::make_unique<TopLevelAccelerationStructure>(_blases, _bindlessResources, _vulkanContext);
+    _bindlessResources->UpdateDescriptorSet();
 
     InitializeDescriptorSets();
     InitializePipeline();

@@ -40,3 +40,12 @@ layout (std140, set = 0, binding = 2) buffer GeometryNodes
 {
     GeometryNode geometryNodes[];
 };
+
+struct BLASInstance
+{
+    uint firstGeometryIndex;
+};
+layout (set = 0, binding = 3) buffer BLASInstances
+{
+    BLASInstance blasInstances[];
+};

@@ -29,7 +29,8 @@ hitAttributeEXT vec2 attribs;
 
 void main()
 {
-    GeometryNode geometryNode = geometryNodes[gl_GeometryIndexEXT];
+    BLASInstance blasInstance = blasInstances[gl_InstanceCustomIndexEXT];
+    GeometryNode geometryNode = geometryNodes[blasInstance.firstGeometryIndex + gl_GeometryIndexEXT];
     Material material = materials[nonuniformEXT(geometryNode.materialIndex)];
 
     Vertices vertices = Vertices(geometryNode.vertexBufferDeviceAddress);

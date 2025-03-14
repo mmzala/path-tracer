@@ -33,6 +33,13 @@ public:
     ResourceHandle<GeometryNode> Create(const GeometryNodeCreation& creation);
 };
 
+class BLASInstanceResources : public ResourceManager<BLASInstance>
+{
+public:
+    BLASInstanceResources() = default;
+    ResourceHandle<BLASInstance> Create(const BLASInstanceCreation& creation);
+};
+
 class BindlessResources
 {
 public:
@@ -42,6 +49,7 @@ public:
     [[nodiscard]] ImageResources& Images() const { return *_imageResources; }
     [[nodiscard]] MaterialResources& Materials() const { return *_materialResources; }
     [[nodiscard]] GeometryNodeResources& GeometryNodes() const { return *_geometryNodeResources; }
+    [[nodiscard]] BLASInstanceResources& BLASInstances() const { return *_blasInstanceResources; }
     [[nodiscard]] const vk::DescriptorSetLayout& DescriptorSetLayout() const { return _bindlessLayout; }
     [[nodiscard]] const vk::DescriptorSet& DescriptorSet() const { return _bindlessSet; }
 
@@ -51,6 +59,7 @@ private:
         eImages,
         eMaterials,
         eGeometryNodes,
+        eBLASInstances,
     };
 
     static constexpr uint32_t MAX_RESOURCES = 1024;
@@ -60,8 +69,10 @@ private:
     std::unique_ptr<ImageResources> _imageResources;
     std::unique_ptr<MaterialResources> _materialResources;
     std::unique_ptr<GeometryNodeResources> _geometryNodeResources;
+    std::unique_ptr<BLASInstanceResources> _blasInstanceResources;
     std::unique_ptr<Buffer> _materialBuffer;
     std::unique_ptr<Buffer> _geometryNodeBuffer;
+    std::unique_ptr<Buffer> _blasInstanceBuffer;
 
     vk::DescriptorPool _bindlessPool;
     vk::DescriptorSetLayout _bindlessLayout;
@@ -73,7 +84,9 @@ private:
     void UploadImages();
     void UploadMaterials();
     void UploadGeometryNodes();
+    void UploadBLASInstances();
     void InitializeSet();
     void InitializeMaterialBuffer();
     void InitializeGeometryNodeBuffer();
+    void InitializeBLASInstanceBuffer();
 };

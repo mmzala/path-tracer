@@ -198,3 +198,10 @@ struct GeometryNode
     uint32_t materialIndex = NULL_RESOURCE_INDEX_VALUE;
     glm::vec3 _PADDING_{};
 };
+
+struct BLASInstance
+{
+    uint32_t firstGeometryIndex = 0;
+};
+
+using BLASInstanceCreation = BLASInstance;
