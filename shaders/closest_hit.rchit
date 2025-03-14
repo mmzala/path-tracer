@@ -21,15 +21,15 @@ struct Triangle
 	vec2 texCoord;
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Vertices { Vertex vertices[]; };
-layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Indices { uint indices[]; };
+layout(buffer_reference, scalar) readonly buffer Vertices { vec4 vertices[]; };
+layout(buffer_reference, scalar) readonly buffer Indices { uint indices[]; };
 
 layout(location = 0) rayPayloadInEXT vec3 hitValue;
 hitAttributeEXT vec2 attribs;
 
 void main()
 {
-    GeometryNode geometryNode = geometryNodes[gl_GeometryIndexEXT];
+    GeometryNode geometryNode = geometryNodes[gl_InstanceCustomIndexEXT];
     Material material = materials[nonuniformEXT(geometryNode.materialIndex)];
 
     Vertices vertices = Vertices(geometryNode.vertexBufferDeviceAddress);
@@ -38,10 +38,14 @@ void main()
     Triangle triangle;
     const uint indexOffset = gl_PrimitiveID * 3;
 
-    for (uint i = 0; i < 3; i++)
+    for (uint i = 0; i < 3; ++i)
     {
-    	const uint vertexOffset = indices.indices[indexOffset + i];
-    	triangle.vertices[i] = vertices.vertices[vertexOffset];
+    	const uint offset = indices.indices[indexOffset + i];
+    	const vec4 pack1 = vertices.vertices[offset + 0]; // position.xyz, normal.x
+        const vec4 pack2 = vertices.vertices[offset + 1]; // normal.yz, texCoord.xy
+        triangle.vertices[i].position = pack1.xyz;
+        triangle.vertices[i].normal = vec3(pack1.w, pack2.xy);
+        triangle.vertices[i].texCoord = pack2.zw;
     }
 
     const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
@@ -51,7 +55,6 @@ void main()
     vec4 albedo = vec4(1.0);
     if (material.useAlbedoMap)
     {
-        // TODO: Textures are not correctly sampled somehow and it crashes the program
         albedo = pow(texture(textures[nonuniformEXT(material.albedoMapIndex)], triangle.texCoord), vec4(2.2));
     }
     albedo *= material.albedoFactor;
