@@ -46,10 +46,10 @@ public:
     explicit BindlessResources(const std::shared_ptr<VulkanContext>& vulkanContext);
     ~BindlessResources();
     void UpdateDescriptorSet();
-    [[nodiscard]] ImageResources& Images() const { return *_imageResources; }
-    [[nodiscard]] MaterialResources& Materials() const { return *_materialResources; }
-    [[nodiscard]] GeometryNodeResources& GeometryNodes() const { return *_geometryNodeResources; }
-    [[nodiscard]] BLASInstanceResources& BLASInstances() const { return *_blasInstanceResources; }
+    [[nodiscard]] ImageResources& Images() { return _imageResources; }
+    [[nodiscard]] MaterialResources& Materials() { return _materialResources; }
+    [[nodiscard]] GeometryNodeResources& GeometryNodes() { return _geometryNodeResources; }
+    [[nodiscard]] BLASInstanceResources& BLASInstances() { return _blasInstanceResources; }
     [[nodiscard]] const vk::DescriptorSetLayout& DescriptorSetLayout() const { return _bindlessLayout; }
     [[nodiscard]] const vk::DescriptorSet& DescriptorSet() const { return _bindlessSet; }
 
@@ -65,11 +65,12 @@ private:
     static constexpr uint32_t MAX_RESOURCES = 1024;
 
     std::shared_ptr<VulkanContext> _vulkanContext;
-    // TODO: Why are these pointers?
-    std::unique_ptr<ImageResources> _imageResources;
-    std::unique_ptr<MaterialResources> _materialResources;
-    std::unique_ptr<GeometryNodeResources> _geometryNodeResources;
-    std::unique_ptr<BLASInstanceResources> _blasInstanceResources;
+
+    ImageResources _imageResources;
+    MaterialResources _materialResources;
+    GeometryNodeResources _geometryNodeResources {};
+    BLASInstanceResources _blasInstanceResources {};
+
     std::unique_ptr<Buffer> _materialBuffer;
     std::unique_ptr<Buffer> _geometryNodeBuffer;
     std::unique_ptr<Buffer> _blasInstanceBuffer;

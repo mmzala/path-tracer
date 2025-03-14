@@ -37,10 +37,8 @@ ResourceHandle<BLASInstance> BLASInstanceResources::Create(const BLASInstanceCre
 
 BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext)
-    , _imageResources(std::make_unique<ImageResources>(vulkanContext))
-    , _materialResources(std::make_unique<MaterialResources>(vulkanContext))
-    , _geometryNodeResources(std::make_unique<GeometryNodeResources>())
-    , _blasInstanceResources(std::make_unique<BLASInstanceResources>())
+    , _imageResources(vulkanContext)
+    , _materialResources(vulkanContext)
 {
     InitializeSet();
     InitializeMaterialBuffer();
@@ -60,7 +58,7 @@ BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulka
         .SetUsageFlags(vk::ImageUsageFlagBits::eSampled)
         .SetFormat(vk::Format::eR8G8B8A8Unorm)
         .SetData(data);
-    _fallbackImage = _imageResources->Create(fallbackImageCreation);
+    _fallbackImage = _imageResources.Create(fallbackImageCreation);
 }
 
 BindlessResources::~BindlessResources()
@@ -79,12 +77,12 @@ void BindlessResources::UpdateDescriptorSet()
 
 void BindlessResources::UploadImages()
 {
-    if (_imageResources->GetAll().empty())
+    if (_imageResources.GetAll().empty())
     {
         return;
     }
 
-    if (_imageResources->GetAll().size() > MAX_RESOURCES)
+    if (_imageResources.GetAll().size() > MAX_RESOURCES)
     {
         spdlog::error("[RESOURCES] Too many images to fit into the bindless set");
         return;
@@ -95,7 +93,7 @@ void BindlessResources::UploadImages()
 
     for (uint32_t i = 0; i < MAX_RESOURCES; ++i)
     {
-        const Image& image = _imageResources->GetAll().size() > i ? _imageResources->GetAll()[i] : _imageResources->Get(_fallbackImage);
+        const Image& image = _imageResources.GetAll().size() > i ? _imageResources.GetAll()[i] : _imageResources.Get(_fallbackImage);
 
         vk::DescriptorImageInfo& imageInfo = imageInfos.at(i);
         imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
@@ -116,24 +114,24 @@ void BindlessResources::UploadImages()
 
 void BindlessResources::UploadMaterials()
 {
-    if (_materialResources->GetAll().empty())
+    if (_materialResources.GetAll().empty())
     {
         return;
     }
 
-    if (_materialResources->GetAll().size() > MAX_RESOURCES)
+    if (_materialResources.GetAll().size() > MAX_RESOURCES)
     {
         spdlog::error("[RESOURCES] Material buffer is too small to fit all of the available materials");
         return;
     }
 
     // TODO: Transfer to host memory
-    std::memcpy(_materialBuffer->mappedPtr, _materialResources->GetAll().data(), _materialResources->GetAll().size() * sizeof(Material));
+    std::memcpy(_materialBuffer->mappedPtr, _materialResources.GetAll().data(), _materialResources.GetAll().size() * sizeof(Material));
 
     vk::DescriptorBufferInfo bufferInfo {};
     bufferInfo.buffer = _materialBuffer->buffer;
     bufferInfo.offset = 0;
-    bufferInfo.range = sizeof(Material) * _materialResources->GetAll().size();
+    bufferInfo.range = sizeof(Material) * _materialResources.GetAll().size();
 
     vk::WriteDescriptorSet descriptorWrite {};
     descriptorWrite.dstSet = _bindlessSet;
@@ -148,18 +146,18 @@ void BindlessResources::UploadMaterials()
 
 void BindlessResources::UploadGeometryNodes()
 {
-    if (_geometryNodeResources->GetAll().empty())
+    if (_geometryNodeResources.GetAll().empty())
     {
         return;
     }
 
-    if (_geometryNodeResources->GetAll().size() > MAX_RESOURCES)
+    if (_geometryNodeResources.GetAll().size() > MAX_RESOURCES)
     {
         spdlog::error("[RESOURCES] Geometry node buffer is too small to fit all of the available nodes");
         return;
     }
 
-    vk::DeviceSize bufferSize = _geometryNodeResources->GetAll().size() * sizeof(GeometryNode);
+    vk::DeviceSize bufferSize = _geometryNodeResources.GetAll().size() * sizeof(GeometryNode);
     BufferCreation stagingBufferCreation {};
     stagingBufferCreation.SetSize(bufferSize)
         .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
@@ -167,7 +165,7 @@ void BindlessResources::UploadGeometryNodes()
         .SetIsMappable(true)
         .SetName("GeometryNode staging buffer");
     Buffer stagingBuffer(stagingBufferCreation, _vulkanContext);
-    std::memcpy(stagingBuffer.mappedPtr, _geometryNodeResources->GetAll().data(), bufferSize);
+    std::memcpy(stagingBuffer.mappedPtr, _geometryNodeResources.GetAll().data(), bufferSize);
 
     SingleTimeCommands commands(_vulkanContext);
     commands.Record([&](vk::CommandBuffer commandBuffer)
@@ -194,18 +192,18 @@ void BindlessResources::UploadGeometryNodes()
 
 void BindlessResources::UploadBLASInstances()
 {
-    if (_blasInstanceResources->GetAll().empty())
+    if (_blasInstanceResources.GetAll().empty())
     {
         return;
     }
 
-    if (_blasInstanceResources->GetAll().size() > MAX_RESOURCES)
+    if (_blasInstanceResources.GetAll().size() > MAX_RESOURCES)
     {
         spdlog::error("[RESOURCES] BLAS instance buffer is too small to fit all of the available BLASes");
         return;
     }
 
-    vk::DeviceSize bufferSize = _blasInstanceResources->GetAll().size() * sizeof(BLASInstance);
+    vk::DeviceSize bufferSize = _blasInstanceResources.GetAll().size() * sizeof(BLASInstance);
     BufferCreation stagingBufferCreation {};
     stagingBufferCreation.SetSize(bufferSize)
         .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
@@ -213,7 +211,7 @@ void BindlessResources::UploadBLASInstances()
         .SetIsMappable(true)
         .SetName("BLASInstance staging buffer");
     Buffer stagingBuffer(stagingBufferCreation, _vulkanContext);
-    std::memcpy(stagingBuffer.mappedPtr, _blasInstanceResources->GetAll().data(), bufferSize);
+    std::memcpy(stagingBuffer.mappedPtr, _blasInstanceResources.GetAll().data(), bufferSize);
 
     SingleTimeCommands commands(_vulkanContext);
     commands.Record([&](vk::CommandBuffer commandBuffer)
