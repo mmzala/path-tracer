@@ -1,7 +1,7 @@
 #include "renderer.hpp"
 #include "bottom_level_acceleration_structure.hpp"
 #include "gltf_loader.hpp"
-#include "gpu_resources.hpp"
+#include "resources/bindless_resources.hpp"
 #include "shader.hpp"
 #include "single_time_commands.hpp"
 #include "swap_chain.hpp"
@@ -22,9 +22,11 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     InitializeSynchronizationObjects();
     InitializeRenderTarget();
 
-    _gltfLoader = std::make_unique<GLTFLoader>(_vulkanContext);
+    _bindlessResources = std::make_shared<BindlessResources>(_vulkanContext);
+    _gltfLoader = std::make_unique<GLTFLoader>(_bindlessResources, _vulkanContext);
 
     const std::vector<std::string> scene = {
+        // "assets/helmet/FlightHelmet.gltf",
         "assets/dragon/DragonAttenuation.gltf",
         "assets/cube/Cube.gltf",
     };
@@ -32,10 +34,11 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     for (const auto& modelPath : scene)
     {
         std::shared_ptr<Model> model = _gltfLoader->LoadFromFile(modelPath);
-        _blases.emplace_back(model, _vulkanContext);
+        _blases.emplace_back(model, _bindlessResources, _vulkanContext);
     }
 
-    _tlas = std::make_unique<TopLevelAccelerationStructure>(_blases, _vulkanContext);
+    _tlas = std::make_unique<TopLevelAccelerationStructure>(_blases, _bindlessResources, _vulkanContext);
+    _bindlessResources->UpdateDescriptorSet();
 
     InitializeDescriptorSets();
     InitializePipeline();
@@ -111,7 +114,8 @@ void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t s
         vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, _pipeline);
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 0, _descriptorSet, nullptr);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 0, _bindlessResources->DescriptorSet(), nullptr);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 1, _descriptorSet, nullptr);
 
     vk::StridedDeviceAddressRegionKHR callableShaderSbtEntry {};
     commandBuffer.traceRaysKHR(_raygenAddressRegion, _missAddressRegion, _hitAddressRegion, callableShaderSbtEntry, _windowWidth, _windowHeight, 1, _vulkanContext->Dldi());
@@ -167,7 +171,7 @@ void Renderer::InitializeRenderTarget()
 void Renderer::InitializeDescriptorSets()
 {
     CameraUniformData cameraData {};
-    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(-8.0f, 5.0f, 1.5f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(-8.0f, 3.2f, 1.5f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
     cameraData.projInverse = glm::inverse(glm::perspective(glm::radians(60.0f), static_cast<float>(_windowWidth) / static_cast<float>(_windowHeight), 0.1f, 512.0f));
 
     constexpr vk::DeviceSize uniformBufferSize = sizeof(CameraUniformData);
@@ -320,9 +324,11 @@ void Renderer::InitializePipeline()
     group3.anyHitShader = vk::ShaderUnusedKHR;
     group3.intersectionShader = vk::ShaderUnusedKHR;
 
+    std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts { _bindlessResources->DescriptorSetLayout(), _descriptorSetLayout };
+
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo {};
-    pipelineLayoutCreateInfo.setLayoutCount = 1;
-    pipelineLayoutCreateInfo.pSetLayouts = &_descriptorSetLayout;
+    pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayouts.size();
+    pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
     pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
     _pipelineLayout = _vulkanContext->Device().createPipelineLayout(pipelineLayoutCreateInfo);

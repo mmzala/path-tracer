@@ -15,6 +15,7 @@ class SwapChain;
 class GLTFLoader;
 class BottomLevelAccelerationStructure;
 class TopLevelAccelerationStructure;
+class BindlessResources;
 
 class Renderer
 {
@@ -58,6 +59,7 @@ private:
     uint32_t _currentResourcesFrame = 0;
 
     std::unique_ptr<GLTFLoader> _gltfLoader;
+    std::shared_ptr<BindlessResources> _bindlessResources;
 
     std::vector<BottomLevelAccelerationStructure> _blases {};
     std::unique_ptr<TopLevelAccelerationStructure> _tlas;

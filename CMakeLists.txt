@@ -36,6 +36,7 @@ target_link_libraries(RayTracer
 		PUBLIC SDL3::SDL3-static
 		PUBLIC glm::glm
 		PUBLIC fastgltf::fastgltf
+		PUBLIC STB
 )
 
 # Add sources and includes

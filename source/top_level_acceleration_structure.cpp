@@ -1,13 +1,13 @@
 #include "top_level_acceleration_structure.hpp"
 #include "bottom_level_acceleration_structure.hpp"
-#include "gpu_resources.hpp"
+#include "resources/bindless_resources.hpp"
 #include "single_time_commands.hpp"
 #include "vulkan_context.hpp"
 
-TopLevelAccelerationStructure::TopLevelAccelerationStructure(const std::vector<BottomLevelAccelerationStructure>& blases, const std::shared_ptr<VulkanContext>& vulkanContext)
+TopLevelAccelerationStructure::TopLevelAccelerationStructure(const std::vector<BottomLevelAccelerationStructure>& blases, const std::shared_ptr<BindlessResources>& resources, const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext)
 {
-    InitializeStructure(blases);
+    InitializeStructure(blases, resources);
 }
 
 TopLevelAccelerationStructure::~TopLevelAccelerationStructure()
@@ -15,8 +15,9 @@ TopLevelAccelerationStructure::~TopLevelAccelerationStructure()
     _vulkanContext->Device().destroyAccelerationStructureKHR(_vkStructure, nullptr, _vulkanContext->Dldi());
 }
 
-void TopLevelAccelerationStructure::InitializeStructure(const std::vector<BottomLevelAccelerationStructure>& blases)
+void TopLevelAccelerationStructure::InitializeStructure(const std::vector<BottomLevelAccelerationStructure>& blases, const std::shared_ptr<BindlessResources>& resources)
 {
+    uint32_t firstGeometryNodeIndex = 0;
     std::vector<vk::AccelerationStructureInstanceKHR> accelerationStructureInstances {};
     for (const auto& blas : blases)
     {
@@ -34,6 +35,12 @@ void TopLevelAccelerationStructure::InitializeStructure(const std::vector<Bottom
         vk::AccelerationStructureDeviceAddressInfoKHR blasDeviceAddress {};
         blasDeviceAddress.accelerationStructure = blas.Structure();
         accelerationStructureInstance.accelerationStructureReference = _vulkanContext->Device().getAccelerationStructureAddressKHR(blasDeviceAddress, _vulkanContext->Dldi());
+
+        BLASInstanceCreation blasInstanceCreation {};
+        blasInstanceCreation.firstGeometryIndex = firstGeometryNodeIndex;
+        resources->BLASInstances().Create(blasInstanceCreation);
+
+        firstGeometryNodeIndex += blas.GeometryCount();
     }
 
     BufferCreation instancesBufferCreation {};

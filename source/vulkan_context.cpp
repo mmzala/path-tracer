@@ -232,8 +232,9 @@ void VulkanContext::InitializeDevice()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features,
-        vk::PhysicalDeviceBufferDeviceAddressFeatures, vk::PhysicalDeviceAccelerationStructureFeaturesKHR, vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>
+    vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features, vk::PhysicalDeviceDescriptorIndexingFeatures,
+        vk::PhysicalDeviceScalarBlockLayoutFeatures, vk::PhysicalDeviceBufferDeviceAddressFeatures, vk::PhysicalDeviceAccelerationStructureFeaturesKHR,
+        vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>
         structureChain;
 
     auto& rayTracingPipelineFeatures = structureChain.get<vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>();
@@ -244,6 +245,12 @@ void VulkanContext::InitializeDevice()
 
     auto& deviceAddressFeatures = structureChain.get<vk::PhysicalDeviceBufferDeviceAddressFeatures>();
     deviceAddressFeatures.bufferDeviceAddress = true;
+
+    auto& scalarBlockLayoutFeatures = structureChain.get<vk::PhysicalDeviceScalarBlockLayoutFeatures>();
+    scalarBlockLayoutFeatures.scalarBlockLayout = true;
+
+    auto& indexingFeatures = structureChain.get<vk::PhysicalDeviceDescriptorIndexingFeatures>();
+    indexingFeatures.descriptorBindingPartiallyBound = true;
 
     auto& synchronization2Features = structureChain.get<vk::PhysicalDeviceSynchronization2Features>();
     synchronization2Features.synchronization2 = true;
