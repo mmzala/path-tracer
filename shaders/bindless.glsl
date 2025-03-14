@@ -35,7 +35,7 @@ struct GeometryNode
     uint64_t indexBufferDeviceAddress;
     uint materialIndex;
 };
-layout (std140, set = 0, binding = 2) uniform GeometryNodes
+layout (std140, set = 0, binding = 2) buffer GeometryNodes
 {
-    GeometryNode geometryNodes[1024];
+    GeometryNode geometryNodes[];
 };

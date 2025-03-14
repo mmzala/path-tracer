@@ -1,4 +1,5 @@
 #include "resources/bindless_resources.hpp"
+#include "single_time_commands.hpp"
 #include "vk_common.hpp"
 #include "vulkan_context.hpp"
 #include <spdlog/spdlog.h>
@@ -150,19 +151,33 @@ void BindlessResources::UploadGeometryNodes()
         return;
     }
 
-    // TODO: Transfer to host memory
-    std::memcpy(_geometryNodeBuffer->mappedPtr, _geometryNodeResources->GetAll().data(), _geometryNodeResources->GetAll().size() * sizeof(GeometryNode));
+    vk::DeviceSize bufferSize = _geometryNodeResources->GetAll().size() * sizeof(GeometryNode);
+    BufferCreation stagingBufferCreation {};
+    stagingBufferCreation.SetSize(bufferSize)
+        .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+        .SetIsMappable(true)
+        .SetName("GeometryNode staging buffer");
+    Buffer stagingBuffer(stagingBufferCreation, _vulkanContext);
+    std::memcpy(stagingBuffer.mappedPtr, _geometryNodeResources->GetAll().data(), bufferSize);
+
+    SingleTimeCommands commands(_vulkanContext);
+    commands.Record([&](vk::CommandBuffer commandBuffer)
+        {
+            VkCopyBufferToBuffer(commandBuffer, stagingBuffer.buffer, _geometryNodeBuffer->buffer, bufferSize);
+        });
+    commands.Submit();
 
     vk::DescriptorBufferInfo bufferInfo {};
     bufferInfo.buffer = _geometryNodeBuffer->buffer;
     bufferInfo.offset = 0;
-    bufferInfo.range = sizeof(GeometryNode) * _geometryNodeResources->GetAll().size();
+    bufferInfo.range = bufferSize;
 
     vk::WriteDescriptorSet descriptorWrite {};
     descriptorWrite.dstSet = _bindlessSet;
     descriptorWrite.dstBinding = static_cast<uint32_t>(BindlessBinding::eGeometryNodes);
     descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
+    descriptorWrite.descriptorType = vk::DescriptorType::eStorageBuffer;
     descriptorWrite.descriptorCount = 1;
     descriptorWrite.pBufferInfo = &bufferInfo;
 
@@ -171,9 +186,10 @@ void BindlessResources::UploadGeometryNodes()
 
 void BindlessResources::InitializeSet()
 {
-    std::array<vk::DescriptorPoolSize, 2> poolSizes {
+    std::array<vk::DescriptorPoolSize, 3> poolSizes {
         vk::DescriptorPoolSize { vk::DescriptorType::eCombinedImageSampler, MAX_RESOURCES },
-        vk::DescriptorPoolSize { vk::DescriptorType::eUniformBuffer, 2 }, // Materials and GeometryNodes
+        vk::DescriptorPoolSize { vk::DescriptorType::eUniformBuffer, 1 },
+        vk::DescriptorPoolSize { vk::DescriptorType::eStorageBuffer, 1 },
     };
 
     vk::DescriptorPoolCreateInfo poolCreateInfo {};
@@ -198,7 +214,7 @@ void BindlessResources::InitializeSet()
     materialBinding.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
 
     vk::DescriptorSetLayoutBinding& geometryNodeBinding = bindings[2];
-    geometryNodeBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+    geometryNodeBinding.descriptorType = vk::DescriptorType::eStorageBuffer;
     geometryNodeBinding.descriptorCount = 1;
     geometryNodeBinding.binding = static_cast<uint32_t>(BindlessBinding::eGeometryNodes);
     geometryNodeBinding.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
@@ -246,8 +262,9 @@ void BindlessResources::InitializeGeometryNodeBuffer()
 {
     BufferCreation creation {};
     creation.SetSize(MAX_RESOURCES * sizeof(GeometryNode))
-        .SetUsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
-        .SetIsMappable(true)
+        .SetUsageFlags(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)
+        .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+        .SetIsMappable(false)
         .SetName("GeometryNode buffer");
 
     _geometryNodeBuffer = std::make_unique<Buffer>(creation, _vulkanContext);
