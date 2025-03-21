@@ -26,9 +26,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     _gltfLoader = std::make_unique<GLTFLoader>(_bindlessResources, _vulkanContext);
 
     const std::vector<std::string> scene = {
-        // "assets/helmet/FlightHelmet.gltf",
-        "assets/dragon/DragonAttenuation.gltf",
-        "assets/cube/Cube.gltf",
+        "assets/cornell/CornellBox-Original.gltf",
     };
     _blases.reserve(scene.size());
     for (const auto& modelPath : scene)
@@ -171,7 +169,7 @@ void Renderer::InitializeRenderTarget()
 void Renderer::InitializeDescriptorSets()
 {
     CameraUniformData cameraData {};
-    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(-8.0f, 3.2f, 1.5f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(-2.0f, 1.0f, 5.01f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
     cameraData.projInverse = glm::inverse(glm::perspective(glm::radians(60.0f), static_cast<float>(_windowWidth) / static_cast<float>(_windowHeight), 0.1f, 512.0f));
 
     constexpr vk::DeviceSize uniformBufferSize = sizeof(CameraUniformData);
