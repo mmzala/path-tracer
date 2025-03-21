@@ -60,6 +60,7 @@ void BottomLevelAccelerationStructure::InitializeTransformBuffer()
 
 void BottomLevelAccelerationStructure::InitializeStructure(const std::shared_ptr<BindlessResources>& resources)
 {
+    uint32_t meshItrIndex = 0;
     uint32_t maxPrimitiveCount = 0;
     std::vector<uint32_t> maxPrimitiveCounts {};
     std::vector<vk::AccelerationStructureGeometryKHR> geometries {};
@@ -71,46 +72,52 @@ void BottomLevelAccelerationStructure::InitializeStructure(const std::shared_ptr
         {
             continue;
         }
+
         const uint32_t meshIndex = node.meshIndex.value();
         const Mesh& mesh = _model->meshes[meshIndex];
 
-        vk::DeviceOrHostAddressConstKHR vertexBufferDeviceAddress {};
-        vk::DeviceOrHostAddressConstKHR indexBufferDeviceAddress {};
-        vk::DeviceOrHostAddressConstKHR transformBufferDeviceAddress {};
+        for (const auto& primitive : mesh.primitives)
+        {
+            vk::DeviceOrHostAddressConstKHR vertexBufferDeviceAddress {};
+            vk::DeviceOrHostAddressConstKHR indexBufferDeviceAddress {};
+            vk::DeviceOrHostAddressConstKHR transformBufferDeviceAddress {};
 
-        vertexBufferDeviceAddress.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_model->vertexBuffer->buffer);
-        indexBufferDeviceAddress.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_model->indexBuffer->buffer) + mesh.firstIndex * sizeof(uint32_t);
-        transformBufferDeviceAddress.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_transformBuffer->buffer) + static_cast<uint32_t>(geometries.size()) * sizeof(vk::TransformMatrixKHR);
+            vertexBufferDeviceAddress.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_model->vertexBuffer->buffer);
+            indexBufferDeviceAddress.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_model->indexBuffer->buffer) + primitive.firstIndex * sizeof(uint32_t);
+            transformBufferDeviceAddress.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_transformBuffer->buffer) + meshItrIndex * sizeof(vk::TransformMatrixKHR);
 
-        vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData {};
-        trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
-        trianglesData.vertexData = vertexBufferDeviceAddress;
-        trianglesData.maxVertex = _model->verticesCount;
-        trianglesData.vertexStride = sizeof(Model::Vertex);
-        trianglesData.indexType = vk::IndexType::eUint32;
-        trianglesData.indexData = indexBufferDeviceAddress;
-        trianglesData.transformData = transformBufferDeviceAddress;
+            vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData {};
+            trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
+            trianglesData.vertexData = vertexBufferDeviceAddress;
+            trianglesData.maxVertex = _model->verticesCount;
+            trianglesData.vertexStride = sizeof(Model::Vertex);
+            trianglesData.indexType = vk::IndexType::eUint32;
+            trianglesData.indexData = indexBufferDeviceAddress;
+            trianglesData.transformData = transformBufferDeviceAddress;
 
-        vk::AccelerationStructureGeometryKHR& accelerationStructureGeometry = geometries.emplace_back();
-        accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
-        accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eTriangles;
-        accelerationStructureGeometry.geometry.triangles = trianglesData;
+            vk::AccelerationStructureGeometryKHR& accelerationStructureGeometry = geometries.emplace_back();
+            accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
+            accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eTriangles;
+            accelerationStructureGeometry.geometry.triangles = trianglesData;
 
-        uint32_t primitiveCount = mesh.indexCount / 3;
-        maxPrimitiveCounts.push_back(primitiveCount);
-        maxPrimitiveCount += primitiveCount;
+            uint32_t primitiveCount = primitive.indexCount / 3;
+            maxPrimitiveCounts.push_back(primitiveCount);
+            maxPrimitiveCount += primitiveCount;
 
-        vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = buildRangeInfos.emplace_back();
-        buildRangeInfo.primitiveCount = primitiveCount;
-        buildRangeInfo.primitiveOffset = 0;
-        buildRangeInfo.firstVertex = 0;
-        buildRangeInfo.transformOffset = 0;
+            vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = buildRangeInfos.emplace_back();
+            buildRangeInfo.primitiveCount = primitiveCount;
+            buildRangeInfo.primitiveOffset = 0;
+            buildRangeInfo.firstVertex = 0;
+            buildRangeInfo.transformOffset = 0;
 
-        GeometryNodeCreation geometryNodeCreation {};
-        geometryNodeCreation.vertexBufferDeviceAddress = vertexBufferDeviceAddress.deviceAddress;
-        geometryNodeCreation.indexBufferDeviceAddress = indexBufferDeviceAddress.deviceAddress;
-        geometryNodeCreation.material = mesh.material;
-        resources->GeometryNodes().Create(geometryNodeCreation);
+            GeometryNodeCreation geometryNodeCreation {};
+            geometryNodeCreation.vertexBufferDeviceAddress = vertexBufferDeviceAddress.deviceAddress;
+            geometryNodeCreation.indexBufferDeviceAddress = indexBufferDeviceAddress.deviceAddress;
+            geometryNodeCreation.material = primitive.material;
+            resources->GeometryNodes().Create(geometryNodeCreation);
+        }
+
+        meshItrIndex++;
     }
 
     _geometryCount = geometries.size();

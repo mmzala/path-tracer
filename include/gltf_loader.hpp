@@ -21,11 +21,16 @@ struct Node
     [[nodiscard]] glm::mat4 GetWorldMatrix() const;
 };
 
-struct Mesh
+struct Primitive
 {
     uint32_t indexCount {};
     uint32_t firstIndex {};
     ResourceHandle<Material> material {};
+};
+
+struct Mesh
+{
+    std::vector<Primitive> primitives {};
 };
 
 struct Model

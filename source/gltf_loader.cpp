@@ -167,17 +167,19 @@ ResourceHandle<Material> ProcessMaterial(const fastgltf::Material& gltfMaterial,
 Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
 {
     Mesh mesh {};
-    mesh.firstIndex = indices.size();
 
-    for (const auto& primitive : gltfMesh.primitives)
+    for (const auto& gltfPrimitive : gltfMesh.primitives)
     {
+        Primitive& primitive = mesh.primitives.emplace_back();
+        primitive.firstIndex = indices.size();
+
         size_t initialVertex = vertices.size();
 
-        if (primitive.indicesAccessor.has_value())
+        if (gltfPrimitive.indicesAccessor.has_value())
         {
-            const fastgltf::Accessor& indexAccessor = gltf.accessors[primitive.indicesAccessor.value()];
+            const fastgltf::Accessor& indexAccessor = gltf.accessors[gltfPrimitive.indicesAccessor.value()];
             indices.reserve(indices.size() + indexAccessor.count);
-            mesh.indexCount += indexAccessor.count;
+            primitive.indexCount = indexAccessor.count;
 
             fastgltf::iterateAccessor<uint32_t>(gltf, indexAccessor,
                 [&](uint32_t idx)
@@ -192,7 +194,7 @@ Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, co
 
         // Load positions
         {
-            const fastgltf::Accessor& positionAccessor = gltf.accessors[primitive.findAttribute("POSITION")->accessorIndex];
+            const fastgltf::Accessor& positionAccessor = gltf.accessors[gltfPrimitive.findAttribute("POSITION")->accessorIndex];
             vertices.resize(vertices.size() + positionAccessor.count);
 
             fastgltf::iterateAccessorWithIndex<glm::vec3>(gltf, positionAccessor,
@@ -204,8 +206,8 @@ Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, co
 
         // load vertex normals
         {
-            auto normals = primitive.findAttribute("NORMAL");
-            if (normals != primitive.attributes.end())
+            auto normals = gltfPrimitive.findAttribute("NORMAL");
+            if (normals != gltfPrimitive.attributes.end())
             {
                 const fastgltf::Accessor& normalAccessor = gltf.accessors[normals->accessorIndex];
                 fastgltf::iterateAccessorWithIndex<glm::vec3>(gltf, normalAccessor,
@@ -218,8 +220,8 @@ Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, co
 
         // load UVs
         {
-            auto uvs = primitive.findAttribute("TEXCOORD_0");
-            if (uvs != primitive.attributes.end())
+            auto uvs = gltfPrimitive.findAttribute("TEXCOORD_0");
+            if (uvs != gltfPrimitive.attributes.end())
             {
                 const fastgltf::Accessor& uvAccessor = gltf.accessors[uvs->accessorIndex];
                 fastgltf::iterateAccessorWithIndex<glm::vec2>(gltf, uvAccessor,
@@ -231,16 +233,9 @@ Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, co
         }
 
         // Get material
-        if (primitive.materialIndex.has_value())
+        if (gltfPrimitive.materialIndex.has_value())
         {
-            if (mesh.material.IsNull())
-            {
-                mesh.material = materials[primitive.materialIndex.value()];
-            }
-            else
-            {
-                spdlog::error("[GLTF] Mesh [{}] uses multiple different materials. This is not supported!", gltfMesh.name);
-            }
+            primitive.material = materials[gltfPrimitive.materialIndex.value()];
         }
     }
 
