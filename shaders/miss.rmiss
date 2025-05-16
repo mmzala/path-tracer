@@ -1,9 +1,21 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
 
-layout(location = 0) rayPayloadInEXT vec3 hitValue;
+#include "ray.glsl"
+
+layout(location = 0) rayPayloadInEXT HitPayload payload;
 
 void main()
 {
-    hitValue = vec3(0.25);
+    if (payload.depth == 0)
+    {
+        vec3 clearValue = vec3(0.25);
+        payload.hitValue = clearValue * 0.8;
+    }
+    else
+    {
+        payload.hitValue = vec3(0.01); // No contribution from environment
+    }
+
+    payload.depth = 100; // Ending trace
 }
