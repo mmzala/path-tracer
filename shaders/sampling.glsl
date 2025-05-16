@@ -7,7 +7,7 @@ uint TEA(uint val0, uint val1)
     uint v1 = val1;
     uint s0 = 0;
 
-    for(uint n = 0; n < 16; n++)
+    for (uint n = 0; n < 16; ++n)
     {
         s0 += 0x9e3779b9;
         v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + s0) ^ ((v1 >> 5) + 0xc8013ea4);
@@ -52,7 +52,7 @@ vec3 SamplingHemisphere(inout uint seed, vec3 x, vec3 y, vec3 z)
 // Return the tangent and binormal from the incoming normal
 void CreateCoordinateSystem(in vec3 N, out vec3 Nt, out vec3 Nb)
 {
-    if(abs(N.x) > abs(N.y))
+    if (abs(N.x) > abs(N.y))
     {
         Nt = vec3(N.z, 0, -N.x) / sqrt(N.x * N.x + N.z * N.z);
     }

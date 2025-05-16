@@ -234,8 +234,11 @@ void VulkanContext::InitializeDevice()
 
     vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features, vk::PhysicalDeviceDescriptorIndexingFeatures,
         vk::PhysicalDeviceScalarBlockLayoutFeatures, vk::PhysicalDeviceBufferDeviceAddressFeatures, vk::PhysicalDeviceAccelerationStructureFeaturesKHR,
-        vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>
+        vk::PhysicalDeviceRayTracingPipelineFeaturesKHR, vk::PhysicalDeviceShaderClockFeaturesKHR>
         structureChain;
+
+    auto& shaderClockFeatures = structureChain.get<vk::PhysicalDeviceShaderClockFeaturesKHR>();
+    shaderClockFeatures.shaderSubgroupClock = true;
 
     auto& rayTracingPipelineFeatures = structureChain.get<vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>();
     rayTracingPipelineFeatures.rayTracingPipeline = true;

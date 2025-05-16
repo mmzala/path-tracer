@@ -28,15 +28,15 @@ public:
     void Render();
 
 private:
-    struct Vertex
-    {
-        glm::vec3 position;
-    };
-
     struct CameraUniformData
     {
         glm::mat4 viewInverse {};
         glm::mat4 projInverse {};
+    };
+
+    struct PushConstantData
+    {
+        uint32_t frameIndex {};
     };
 
     void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex);
@@ -56,7 +56,7 @@ private:
     std::array<vk::Fence, MAX_FRAMES_IN_FLIGHT> _inFlightFences;
     std::unique_ptr<Image> _renderTarget;
 
-    uint32_t _currentResourcesFrame = 0;
+    uint32_t _renderedFrames = 0;
 
     std::unique_ptr<GLTFLoader> _gltfLoader;
     std::shared_ptr<BindlessResources> _bindlessResources;

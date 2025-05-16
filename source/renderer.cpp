@@ -61,18 +61,20 @@ Renderer::~Renderer()
 
 void Renderer::Render()
 {
-    VkCheckResult(_vulkanContext->Device().waitForFences(1, &_inFlightFences.at(_currentResourcesFrame), vk::True,
+    uint32_t currentResourcesFrame = _renderedFrames % MAX_FRAMES_IN_FLIGHT;
+
+    VkCheckResult(_vulkanContext->Device().waitForFences(1, &_inFlightFences.at(currentResourcesFrame), vk::True,
                       std::numeric_limits<uint64_t>::max()),
         "[VULKAN] Failed waiting on in flight fence!");
 
     uint32_t swapChainImageIndex {};
     VkCheckResult(_vulkanContext->Device().acquireNextImageKHR(_swapChain->GetSwapChain(), std::numeric_limits<uint64_t>::max(),
-                      _imageAvailableSemaphores.at(_currentResourcesFrame), nullptr, &swapChainImageIndex),
+                      _imageAvailableSemaphores.at(currentResourcesFrame), nullptr, &swapChainImageIndex),
         "[VULKAN] Failed to acquire swap chain image!");
 
-    VkCheckResult(_vulkanContext->Device().resetFences(1, &_inFlightFences.at(_currentResourcesFrame)), "[VULKAN] Failed resetting fences!");
+    VkCheckResult(_vulkanContext->Device().resetFences(1, &_inFlightFences.at(currentResourcesFrame)), "[VULKAN] Failed resetting fences!");
 
-    vk::CommandBuffer commandBuffer = _commandBuffers.at(_currentResourcesFrame);
+    vk::CommandBuffer commandBuffer = _commandBuffers.at(currentResourcesFrame);
     commandBuffer.reset();
 
     vk::CommandBufferBeginInfo commandBufferBeginInfo {};
@@ -80,9 +82,9 @@ void Renderer::Render()
     RecordCommands(commandBuffer, swapChainImageIndex);
     commandBuffer.end();
 
-    vk::Semaphore waitSemaphore = _imageAvailableSemaphores.at(_currentResourcesFrame);
+    vk::Semaphore waitSemaphore = _imageAvailableSemaphores.at(currentResourcesFrame);
     vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    vk::Semaphore signalSemaphore = _renderFinishedSemaphores.at(_currentResourcesFrame);
+    vk::Semaphore signalSemaphore = _renderFinishedSemaphores.at(currentResourcesFrame);
 
     vk::SubmitInfo submitInfo {};
     submitInfo.waitSemaphoreCount = 1;
@@ -92,7 +94,7 @@ void Renderer::Render()
     submitInfo.pCommandBuffers = &commandBuffer;
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &signalSemaphore;
-    VkCheckResult(_vulkanContext->GraphicsQueue().submit(1, &submitInfo, _inFlightFences.at(_currentResourcesFrame)), "[VULKAN] Failed submitting to graphics queue!");
+    VkCheckResult(_vulkanContext->GraphicsQueue().submit(1, &submitInfo, _inFlightFences.at(currentResourcesFrame)), "[VULKAN] Failed submitting to graphics queue!");
 
     vk::SwapchainKHR swapchain = _swapChain->GetSwapChain();
     vk::PresentInfoKHR presentInfo {};
@@ -103,7 +105,7 @@ void Renderer::Render()
     presentInfo.pImageIndices = &swapChainImageIndex;
     VkCheckResult(_vulkanContext->PresentQueue().presentKHR(&presentInfo), "[VULKAN] Failed to present swap chain image!");
 
-    _currentResourcesFrame = (_currentResourcesFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    _renderedFrames++;
 }
 
 void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex)
@@ -114,6 +116,9 @@ void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t s
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, _pipeline);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 0, _bindlessResources->DescriptorSet(), nullptr);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 1, _descriptorSet, nullptr);
+
+    PushConstantData pushConstants { _renderedFrames };
+    commandBuffer.pushConstants(_pipelineLayout, vk::ShaderStageFlagBits::eRaygenKHR, 0, sizeof(PushConstantData), &pushConstants);
 
     vk::StridedDeviceAddressRegionKHR callableShaderSbtEntry {};
     commandBuffer.traceRaysKHR(_raygenAddressRegion, _missAddressRegion, _hitAddressRegion, callableShaderSbtEntry, _windowWidth, _windowHeight, 1, _vulkanContext->Dldi());
@@ -169,7 +174,7 @@ void Renderer::InitializeRenderTarget()
 void Renderer::InitializeDescriptorSets()
 {
     CameraUniformData cameraData {};
-    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(-2.0f, 1.0f, 5.01f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(0.0f, 1.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
     cameraData.projInverse = glm::inverse(glm::perspective(glm::radians(60.0f), static_cast<float>(_windowWidth) / static_cast<float>(_windowHeight), 0.1f, 512.0f));
 
     constexpr vk::DeviceSize uniformBufferSize = sizeof(CameraUniformData);
@@ -324,11 +329,16 @@ void Renderer::InitializePipeline()
 
     std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts { _bindlessResources->DescriptorSetLayout(), _descriptorSetLayout };
 
+    vk::PushConstantRange pushConstantRange {};
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(PushConstantData);
+    pushConstantRange.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR;
+
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo {};
     pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayouts.size();
     pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
-    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-    pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+    pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
     _pipelineLayout = _vulkanContext->Device().createPipelineLayout(pipelineLayoutCreateInfo);
 
     vk::PipelineLibraryCreateInfoKHR libraryCreateInfo {};
