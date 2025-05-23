@@ -22,7 +22,7 @@ void TopLevelAccelerationStructure::InitializeStructure(const std::vector<Bottom
     for (const auto& blas : blases)
     {
         vk::TransformMatrixKHR transform {};
-        const glm::mat3x4 matrix = glm::mat3x4(glm::transpose(blas.Transform()));
+        const glm::mat4 matrix = glm::transpose(blas.Transform()); // VkTransformMatrixKHR uses a row-major memory layout, while glm::mat4 uses a column-major memory layout
         memcpy(&transform, &matrix, sizeof(vk::TransformMatrixKHR));
 
         vk::AccelerationStructureInstanceKHR& accelerationStructureInstance = accelerationStructureInstances.emplace_back();

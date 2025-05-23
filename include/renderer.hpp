@@ -44,6 +44,7 @@ private:
     void InitializeSynchronizationObjects();
     void InitializeRenderTarget();
 
+    void InitializeCamera();
     void InitializeDescriptorSets();
     void InitializePipeline();
     void InitializeShaderBindingTable();

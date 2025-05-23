@@ -9,7 +9,7 @@ void main()
 {
     if (payload.depth == 0)
     {
-        vec3 clearValue = vec3(0.25);
+        vec3 clearValue = vec3(1.0);
         payload.hitValue = clearValue * 0.8;
     }
     else

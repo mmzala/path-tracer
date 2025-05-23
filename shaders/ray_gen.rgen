@@ -42,7 +42,7 @@ void main()
     vec3 currentWeight = vec3(1);
     vec3 hitValue  = vec3(0);
 
-    for(; payload.depth < 10; payload.depth++)
+    for(; payload.depth < 10; ++payload.depth)
     {
         traceRayEXT(topLevelAS,             // acceleration structure
                     rayFlags,               // rayFlags
@@ -64,13 +64,13 @@ void main()
     // Do accumulation over time
     if (frame > 0)
     {
-        float a = 1.0f / float(frame + 1);
+        float a = 1.0 / float(frame + 1);
         vec3 oldColor = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
         imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(oldColor, hitValue, a), 1.0));
     }
     else
     {
         // First frame, replace the value in the buffer
-        imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(hitValue, 1.f));
+        imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(hitValue, 1.0));
     }
 }

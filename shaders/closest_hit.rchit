@@ -46,7 +46,7 @@ Triangle UnpackGeometry(GeometryNode geometryNode)
 
     const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
     triangle.position = triangle.vertices[0].position * barycentricCoords.x + triangle.vertices[1].position * barycentricCoords.y + triangle.vertices[2].position * barycentricCoords.z;
-    triangle.normal = triangle.vertices[0].normal * barycentricCoords.x + triangle.vertices[1].normal * barycentricCoords.y + triangle.vertices[2].normal * barycentricCoords.z;
+    triangle.normal = normalize(triangle.vertices[0].normal * barycentricCoords.x + triangle.vertices[1].normal * barycentricCoords.y + triangle.vertices[2].normal * barycentricCoords.z);
     triangle.texCoord = triangle.vertices[0].texCoord * barycentricCoords.x + triangle.vertices[1].texCoord * barycentricCoords.y + triangle.vertices[2].texCoord * barycentricCoords.z;
 
     return triangle;
@@ -75,12 +75,12 @@ void main()
     vec4 albedo = material.albedoFactor;
     if (material.useAlbedoMap)
     {
-        albedo *= pow(texture(textures[nonuniformEXT(material.albedoMapIndex)], triangle.texCoord), vec4(2.2));
+        albedo *= texture(textures[nonuniformEXT(material.albedoMapIndex)], triangle.texCoord);
     }
-    vec3 BRDF = albedo.xyz / PI;
+    vec3 BRDF = albedo.rgb / PI;
 
     payload.rayOrigin = rayOrigin;
     payload.rayDirection = rayDirection;
-    payload.hitValue = material.emissiveFactor;
+    payload.hitValue = material.emissiveFactor * 30.0;
     payload.weight = BRDF * cosTheta / directionProbability;
 }

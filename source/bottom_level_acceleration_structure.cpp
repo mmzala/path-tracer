@@ -42,7 +42,7 @@ void BottomLevelAccelerationStructure::InitializeTransformBuffer()
         }
 
         vk::TransformMatrixKHR& matrix = transformMatrices.emplace_back();
-        glm::mat3x4 transform = glm::mat3x4(glm::transpose(node.GetWorldMatrix()));
+        glm::mat4 transform = glm::transpose(node.GetWorldMatrix()); // VkTransformMatrixKHR uses a row-major memory layout, while glm::mat4 uses a column-major memory layout
         memcpy(&matrix, &transform, sizeof(vk::TransformMatrixKHR));
     }
 

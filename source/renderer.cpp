@@ -38,6 +38,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     _tlas = std::make_unique<TopLevelAccelerationStructure>(_blases, _bindlessResources, _vulkanContext);
     _bindlessResources->UpdateDescriptorSet();
 
+    InitializeCamera();
     InitializeDescriptorSets();
     InitializePipeline();
     InitializeShaderBindingTable();
@@ -171,11 +172,17 @@ void Renderer::InitializeRenderTarget()
     _renderTarget = std::make_unique<Image>(imageCreation, _vulkanContext);
 }
 
-void Renderer::InitializeDescriptorSets()
+void Renderer::InitializeCamera()
 {
+    constexpr float fov = glm::radians(60.0f);
+    const float aspectRatio = static_cast<float>(_windowWidth) / static_cast<float>(_windowHeight);
+
+    glm::mat4 projection = glm::perspectiveRH_ZO(fov, aspectRatio, 0.1f, 1000.0f);
+    projection[1][1] *= -1;  // Inverting Y for Vulkan (not needed with perspectiveVK)
+
     CameraUniformData cameraData {};
-    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(0.0f, 1.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
-    cameraData.projInverse = glm::inverse(glm::perspective(glm::radians(60.0f), static_cast<float>(_windowWidth) / static_cast<float>(_windowHeight), 0.1f, 512.0f));
+    cameraData.projInverse = glm::inverse(projection);
+    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(0.0f, 1.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
 
     constexpr vk::DeviceSize uniformBufferSize = sizeof(CameraUniformData);
     BufferCreation uniformBufferCreation {};
@@ -186,7 +193,10 @@ void Renderer::InitializeDescriptorSets()
         .SetSize(uniformBufferSize);
     _uniformBuffer = std::make_unique<Buffer>(uniformBufferCreation, _vulkanContext);
     memcpy(_uniformBuffer->mappedPtr, &cameraData, uniformBufferSize);
+}
 
+void Renderer::InitializeDescriptorSets()
+{
     std::array<vk::DescriptorSetLayoutBinding, 3> bindingLayouts {};
 
     vk::DescriptorSetLayoutBinding& imageLayout = bindingLayouts.at(0);
@@ -250,7 +260,7 @@ void Renderer::InitializeDescriptorSets()
     vk::DescriptorBufferInfo descriptorBufferInfo {};
     descriptorBufferInfo.buffer = _uniformBuffer->buffer;
     descriptorBufferInfo.offset = 0;
-    descriptorBufferInfo.range = uniformBufferSize;
+    descriptorBufferInfo.range = sizeof(CameraUniformData);
 
     std::array<vk::WriteDescriptorSet, 3> descriptorWrites {};
 
