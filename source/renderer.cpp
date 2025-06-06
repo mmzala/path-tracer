@@ -1,6 +1,6 @@
 #include "renderer.hpp"
 #include "bottom_level_acceleration_structure.hpp"
-#include "gltf_loader.hpp"
+#include "model_loader.hpp"
 #include "resources/bindless_resources.hpp"
 #include "shader.hpp"
 #include "single_time_commands.hpp"
@@ -23,7 +23,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     InitializeRenderTarget();
 
     _bindlessResources = std::make_shared<BindlessResources>(_vulkanContext);
-    _gltfLoader = std::make_unique<GLTFLoader>(_bindlessResources, _vulkanContext);
+    _modelLoader = std::make_unique<ModelLoader>(_bindlessResources, _vulkanContext);
 
     const std::vector<std::string> scene = {
         // "assets/helmet/FlightHelmet.gltf",
@@ -33,7 +33,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     _blases.reserve(scene.size());
     for (const auto& modelPath : scene)
     {
-        std::shared_ptr<Model> model = _gltfLoader->LoadFromFile(modelPath);
+        std::shared_ptr<Model> model = _modelLoader->LoadFromFile(modelPath);
         _blases.emplace_back(model, _bindlessResources, _vulkanContext);
     }
 
