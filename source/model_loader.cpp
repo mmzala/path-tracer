@@ -3,12 +3,12 @@
 #include "resources/gpu_resources.hpp"
 #include "single_time_commands.hpp"
 #include "vk_common.hpp"
+#include <assimp/GltfMaterial.h>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
 #include <filesystem>
 #include <glm/gtc/type_ptr.hpp>
 #include <spdlog/spdlog.h>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-#include <assimp/GltfMaterial.h>
 #include <stb_image.h>
 
 ResourceHandle<Image> ProcessImage(const std::string_view localPath, const std::string_view directory, const std::shared_ptr<BindlessResources>& resources)
@@ -20,7 +20,7 @@ ResourceHandle<Image> ProcessImage(const std::string_view localPath, const std::
 
     int32_t width {}, height {}, nrChannels {};
 
-    const std::string fullPath = std::string(directory) + "/" + std::string{ localPath.begin(), localPath.end() };
+    const std::string fullPath = std::string(directory) + "/" + std::string { localPath.begin(), localPath.end() };
 
     unsigned char* stbiData = stbi_load(fullPath.c_str(), &width, &height, &nrChannels, 4);
 
@@ -195,10 +195,22 @@ void ProcessNode(const aiNode* aiNode, const Node* parent, std::vector<Node>& no
     static const auto aiMatrixToGlm = [](const aiMatrix4x4& from)
     {
         glm::mat4 to {};
-        to[0][0] = from.a1; to[1][0] = from.a2; to[2][0] = from.a3; to[3][0] = from.a4;
-        to[0][1] = from.b1; to[1][1] = from.b2; to[2][1] = from.b3; to[3][1] = from.b4;
-        to[0][2] = from.c1; to[1][2] = from.c2; to[2][2] = from.c3; to[3][2] = from.c4;
-        to[0][3] = from.d1; to[1][3] = from.d2; to[2][3] = from.d3; to[3][3] = from.d4;
+        to[0][0] = from.a1;
+        to[1][0] = from.a2;
+        to[2][0] = from.a3;
+        to[3][0] = from.a4;
+        to[0][1] = from.b1;
+        to[1][1] = from.b2;
+        to[2][1] = from.b3;
+        to[3][1] = from.b4;
+        to[0][2] = from.c1;
+        to[1][2] = from.c2;
+        to[2][2] = from.c3;
+        to[3][2] = from.c4;
+        to[0][3] = from.d1;
+        to[1][3] = from.d2;
+        to[2][3] = from.d3;
+        to[3][3] = from.d4;
         return to;
     };
 
@@ -262,9 +274,9 @@ std::shared_ptr<Model> ModelLoader::LoadFromFile(std::string_view path)
 {
     spdlog::info("[FILE] Loading model file {}", path);
 
-    const aiScene* aiScene = _importer.ReadFile({path.begin(), path.end()}, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
+    const aiScene* aiScene = _importer.ReadFile({ path.begin(), path.end() }, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
 
-    if(!aiScene || aiScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !aiScene->mRootNode)
+    if (!aiScene || aiScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !aiScene->mRootNode)
     {
         spdlog::error("[FILE] Failed to load model file {} with error: {}", path, _importer.GetErrorString());
         return nullptr;
