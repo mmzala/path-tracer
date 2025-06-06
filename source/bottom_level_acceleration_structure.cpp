@@ -1,5 +1,5 @@
 #include "bottom_level_acceleration_structure.hpp"
-#include "gltf_loader.hpp"
+#include "model_loader.hpp"
 #include "resources/bindless_resources.hpp"
 #include "single_time_commands.hpp"
 #include "vulkan_context.hpp"
@@ -36,7 +36,7 @@ void BottomLevelAccelerationStructure::InitializeTransformBuffer()
     std::vector<vk::TransformMatrixKHR> transformMatrices {};
     for (const auto& node : _model->nodes)
     {
-        if (!node.meshIndex.has_value())
+        if (node.meshes.empty())
         {
             continue;
         }
@@ -60,7 +60,7 @@ void BottomLevelAccelerationStructure::InitializeTransformBuffer()
 
 void BottomLevelAccelerationStructure::InitializeStructure(const std::shared_ptr<BindlessResources>& resources)
 {
-    uint32_t meshItrIndex = 0;
+    uint32_t nodeCount = 0;
     uint32_t maxPrimitiveCount = 0;
     std::vector<uint32_t> maxPrimitiveCounts {};
     std::vector<vk::AccelerationStructureGeometryKHR> geometries {};
@@ -68,23 +68,17 @@ void BottomLevelAccelerationStructure::InitializeStructure(const std::shared_ptr
 
     for (const auto& node : _model->nodes)
     {
-        if (!node.meshIndex.has_value())
+        for (const auto meshIndex : node.meshes)
         {
-            continue;
-        }
+            const Mesh& mesh = _model->meshes[meshIndex];
 
-        const uint32_t meshIndex = node.meshIndex.value();
-        const Mesh& mesh = _model->meshes[meshIndex];
-
-        for (const auto& primitive : mesh.primitives)
-        {
             vk::DeviceOrHostAddressConstKHR vertexBufferDeviceAddress {};
             vk::DeviceOrHostAddressConstKHR indexBufferDeviceAddress {};
             vk::DeviceOrHostAddressConstKHR transformBufferDeviceAddress {};
 
             vertexBufferDeviceAddress.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_model->vertexBuffer->buffer);
-            indexBufferDeviceAddress.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_model->indexBuffer->buffer) + primitive.firstIndex * sizeof(uint32_t);
-            transformBufferDeviceAddress.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_transformBuffer->buffer) + meshItrIndex * sizeof(vk::TransformMatrixKHR);
+            indexBufferDeviceAddress.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_model->indexBuffer->buffer) + mesh.firstIndex * sizeof(uint32_t);
+            transformBufferDeviceAddress.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_transformBuffer->buffer) + nodeCount * sizeof(vk::TransformMatrixKHR);
 
             vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData {};
             trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
@@ -100,7 +94,7 @@ void BottomLevelAccelerationStructure::InitializeStructure(const std::shared_ptr
             accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eTriangles;
             accelerationStructureGeometry.geometry.triangles = trianglesData;
 
-            uint32_t primitiveCount = primitive.indexCount / 3;
+            uint32_t primitiveCount = mesh.indexCount / 3;
             maxPrimitiveCounts.push_back(primitiveCount);
             maxPrimitiveCount += primitiveCount;
 
@@ -113,11 +107,14 @@ void BottomLevelAccelerationStructure::InitializeStructure(const std::shared_ptr
             GeometryNodeCreation geometryNodeCreation {};
             geometryNodeCreation.vertexBufferDeviceAddress = vertexBufferDeviceAddress.deviceAddress;
             geometryNodeCreation.indexBufferDeviceAddress = indexBufferDeviceAddress.deviceAddress;
-            geometryNodeCreation.material = primitive.material;
+            geometryNodeCreation.material = mesh.material;
             resources->GeometryNodes().Create(geometryNodeCreation);
         }
 
-        meshItrIndex++;
+        if (!node.meshes.empty())
+        {
+            nodeCount++;
+        }
     }
 
     _geometryCount = geometries.size();
