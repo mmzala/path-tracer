@@ -4,7 +4,6 @@
 #include <assimp/Importer.hpp>
 #include <glm/vec3.hpp>
 #include <glm/matrix.hpp>
-#include <optional>
 #include <unordered_map>
 
 class VulkanContext;
@@ -18,7 +17,7 @@ struct Node
 {
     const Node* parent = nullptr;
     glm::mat4 localMatrix {};
-    std::optional<uint32_t> meshIndex {};
+    std::vector<uint32_t> meshes {};
 
     [[nodiscard]] glm::mat4 GetWorldMatrix() const;
 };

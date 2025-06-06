@@ -3,8 +3,6 @@
 #include "resources/gpu_resources.hpp"
 #include "single_time_commands.hpp"
 #include "vk_common.hpp"
-#include "../build/x64-Release/_deps/assimp-src/include/assimp/GltfMaterial.h"
-
 #include <filesystem>
 #include <glm/gtc/type_ptr.hpp>
 #include <spdlog/spdlog.h>
@@ -55,7 +53,7 @@ ResourceHandle<Image> LoadTexture(const std::string_view localPath, const std::s
     return it->second;
 }
 
-ResourceHandle<Material> ProcessMaterial(const aiMaterial* material, const std::string_view directory, const std::shared_ptr<BindlessResources>& resources, std::vector<ResourceHandle<Image>>& textures, std::unordered_map<std::string_view, ResourceHandle<Image>>& imageCache)
+ResourceHandle<Material> ProcessMaterial(const aiMaterial* aiMaterial, const std::string_view directory, const std::shared_ptr<BindlessResources>& resources, std::vector<ResourceHandle<Image>>& textures, std::unordered_map<std::string_view, ResourceHandle<Image>>& imageCache)
 {
     MaterialCreation materialCreation {};
 
@@ -63,27 +61,27 @@ ResourceHandle<Material> ProcessMaterial(const aiMaterial* material, const std::
 
     aiString texturePath {};
 
-    if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath) == AI_SUCCESS)
+    if (aiMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath) == AI_SUCCESS)
     {
         materialCreation.albedoMap = LoadTexture(texturePath.C_Str(), directory, resources, textures, imageCache);
     }
 
-    if (material->GetTexture(aiTextureType_GLTF_METALLIC_ROUGHNESS, 0, &texturePath) == AI_SUCCESS)
+    if (aiMaterial->GetTexture(aiTextureType_GLTF_METALLIC_ROUGHNESS, 0, &texturePath) == AI_SUCCESS)
     {
         materialCreation.metallicRoughnessMap = LoadTexture(texturePath.C_Str(), directory, resources, textures, imageCache);
     }
 
-    if (material->GetTexture(aiTextureType_NORMALS, 0, &texturePath) == AI_SUCCESS)
+    if (aiMaterial->GetTexture(aiTextureType_NORMALS, 0, &texturePath) == AI_SUCCESS)
     {
         materialCreation.normalMap = LoadTexture(texturePath.C_Str(), directory, resources, textures, imageCache);
     }
 
-    if (material->GetTexture(aiTextureType_AMBIENT_OCCLUSION, 0, &texturePath) == AI_SUCCESS)
+    if (aiMaterial->GetTexture(aiTextureType_AMBIENT_OCCLUSION, 0, &texturePath) == AI_SUCCESS)
     {
         materialCreation.occlusionMap = LoadTexture(texturePath.C_Str(), directory, resources, textures, imageCache);
     }
 
-    if (material->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath) == AI_SUCCESS)
+    if (aiMaterial->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath) == AI_SUCCESS)
     {
         materialCreation.emissiveMap = LoadTexture(texturePath.C_Str(), directory, resources, textures, imageCache);
     }
@@ -93,32 +91,32 @@ ResourceHandle<Material> ProcessMaterial(const aiMaterial* material, const std::
     aiColor4D color {};
     float factor {};
 
-    if (material->Get(AI_MATKEY_BASE_COLOR, color) == AI_SUCCESS)
+    if (aiMaterial->Get(AI_MATKEY_BASE_COLOR, color) == AI_SUCCESS)
     {
         materialCreation.albedoFactor = glm::vec4(color.r, color.g, color.b, color.a);
     }
 
-    if (material->Get(AI_MATKEY_METALLIC_FACTOR, factor) == AI_SUCCESS)
+    if (aiMaterial->Get(AI_MATKEY_METALLIC_FACTOR, factor) == AI_SUCCESS)
     {
         materialCreation.metallicFactor = factor;
     }
 
-    if (material->Get(AI_MATKEY_ROUGHNESS_FACTOR, factor) == AI_SUCCESS)
+    if (aiMaterial->Get(AI_MATKEY_ROUGHNESS_FACTOR, factor) == AI_SUCCESS)
     {
         materialCreation.roughnessFactor = factor;
     }
 
-    if (material->Get(AI_MATKEY_GLTF_TEXTURE_SCALE(aiTextureType_NORMALS, 0), factor) == AI_SUCCESS)
+    if (aiMaterial->Get(AI_MATKEY_GLTF_TEXTURE_SCALE(aiTextureType_NORMALS, 0), factor) == AI_SUCCESS)
     {
         materialCreation.normalScale = factor;
     }
 
-    if (material->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS)
+    if (aiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS)
     {
         materialCreation.emissiveFactor = glm::vec3(color.r, color.g, color.b);
     }
 
-    if (material->Get(AI_MATKEY_GLTF_TEXTURE_SCALE(aiTextureType_AMBIENT_OCCLUSION, 0), factor) == AI_SUCCESS)
+    if (aiMaterial->Get(AI_MATKEY_GLTF_TEXTURE_SCALE(aiTextureType_AMBIENT_OCCLUSION, 0), factor) == AI_SUCCESS)
     {
         materialCreation.occlusionStrength = factor;
     }
@@ -126,7 +124,7 @@ ResourceHandle<Material> ProcessMaterial(const aiMaterial* material, const std::
     return resources->Materials().Create(materialCreation);
 }
 
-Mesh ProcessMesh(const aiScene* scene, const aiMesh* aiMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
+Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
 {
     Mesh mesh {};
     mesh.firstIndex = indices.size();
@@ -183,7 +181,7 @@ Mesh ProcessMesh(const aiScene* scene, const aiMesh* aiMesh, const std::vector<R
     }
 
     // Material
-    if (aiMesh->mMaterialIndex < scene->mNumMaterials)
+    if (aiMesh->mMaterialIndex < aiScene->mNumMaterials)
     {
         mesh.material = materials[aiMesh->mMaterialIndex]; // Order of materials is the same as assimp loads them, so we get the correct one from our vector with the same index
     }
@@ -191,38 +189,27 @@ Mesh ProcessMesh(const aiScene* scene, const aiMesh* aiMesh, const std::vector<R
     return mesh;
 }
 
-std::vector<Node> ProcessNodes(const fastgltf::Asset& gltf)
+void ProcessNode(const aiNode* aiNode, const Node* parent, std::vector<Node>& nodes)
+{
+    Node& node = nodes.emplace_back();
+    node.parent = parent;
+    node.localMatrix = glm::make_mat4(&aiNode->mTransformation);
+
+    for (uint32_t i = 0; i < aiNode->mNumMeshes; ++i)
+    {
+        node.meshes.push_back(aiNode->mMeshes[i]); // We have the same order of meshes as assimp, so we can use the same index to access it
+    }
+
+    for (uint32_t i = 0; i < aiNode->mNumChildren; ++i)
+    {
+        ProcessNode(aiNode->mChildren[i], &node, nodes);
+    }
+}
+
+std::vector<Node> ProcessNodes(const aiScene* aiScene)
 {
     std::vector<Node> nodes {};
-    nodes.reserve(gltf.nodes.size());
-
-    for (const fastgltf::Node& gltfNode : gltf.nodes)
-    {
-        Node& node = nodes.emplace_back();
-
-        fastgltf::math::fmat4x4 gltfTransform = fastgltf::getTransformMatrix(gltfNode);
-        node.localMatrix = glm::make_mat4(gltfTransform.data());
-
-        if (gltfNode.meshIndex.has_value())
-        {
-            node.meshIndex = gltfNode.meshIndex.value();
-        }
-    }
-
-    // Run loop again to set up hierarchy ( could be done recursively (: )
-    for (uint32_t i = 0; i < nodes.size(); ++i)
-    {
-        const fastgltf::Node& gltfNode = gltf.nodes[i];
-        Node& node = nodes[i];
-
-        // Since we have the same order in our own vector, we can use the same index to assign parents
-        for (const auto& gltfNodeChildIndex : gltfNode.children)
-        {
-            Node& childNode = nodes[gltfNodeChildIndex];
-            childNode.parent = &node;
-        }
-    }
-
+    ProcessNode(aiScene->mRootNode, nullptr, nodes);
     return nodes;
 }
 
@@ -250,9 +237,9 @@ std::shared_ptr<Model> ModelLoader::LoadFromFile(std::string_view path)
 {
     spdlog::info("[FILE] Loading model file {}", path);
 
-    const aiScene* scene = _importer.ReadFile({path.begin(), path.end()}, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
+    const aiScene* aiScene = _importer.ReadFile({path.begin(), path.end()}, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
 
-    if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+    if(!aiScene || aiScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !aiScene->mRootNode)
     {
         spdlog::error("[FILE] Failed to load model file {} with error: {}", path, _importer.GetErrorString());
         return nullptr;
@@ -260,29 +247,29 @@ std::shared_ptr<Model> ModelLoader::LoadFromFile(std::string_view path)
 
     _imageCache.clear(); // Clear image cache for a new load
     std::string_view directory = path.substr(0, path.find_last_of('/'));
-    return ProcessModel(scene, directory);
+    return ProcessModel(aiScene, directory);
 }
 
-std::shared_ptr<Model> ModelLoader::ProcessModel(const aiScene* scene, const std::string_view directory)
+std::shared_ptr<Model> ModelLoader::ProcessModel(const aiScene* aiScene, const std::string_view directory)
 {
     std::shared_ptr<Model> model = std::make_shared<Model>();
 
-    for (uint32_t i = 0; i < scene->mNumMaterials; ++i)
+    for (uint32_t i = 0; i < aiScene->mNumMaterials; ++i)
     {
-        model->materials.push_back(ProcessMaterial(scene->mMaterials[i], directory, _bindlessResources, model->textures, _imageCache));
+        model->materials.push_back(ProcessMaterial(aiScene->mMaterials[i], directory, _bindlessResources, model->textures, _imageCache));
     }
 
     std::vector<Model::Vertex> vertices {};
     std::vector<uint32_t> indices {};
 
-    for (uint32_t i = 0; i < scene->mNumMeshes; ++i)
+    for (uint32_t i = 0; i < aiScene->mNumMeshes; ++i)
     {
-        model->meshes.push_back(ProcessMesh(gltf, gltfMesh, model->materials, vertices, indices));
+        model->meshes.push_back(ProcessMesh(aiScene, aiScene->mMeshes[i], model->materials, vertices, indices));
     }
 
     // Process vertex and index data
     {
-        std::string sceneName = scene->mName.C_Str();
+        std::string sceneName = aiScene->mName.C_Str();
         model->verticesCount = vertices.size();
         model->indexCount = indices.size();
 
@@ -332,7 +319,7 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const aiScene* scene, const std
         commands.Submit();
     }
 
-    model->nodes = ProcessNodes(gltf);
+    model->nodes = ProcessNodes(aiScene);
 
     return model;
 }
