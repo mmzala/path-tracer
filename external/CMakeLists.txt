@@ -87,8 +87,12 @@ set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(assimp)
+
+target_compile_options(assimp PRIVATE -Wdeprecated-non-prototype)
+
 target_include_directories(Assimp INTERFACE ${assimp_SOURCE_DIR}/include)
 target_include_directories(Assimp INTERFACE ${assimp_BINARY_DIR}/include) # Include for assimp config
+target_link_libraries(Assimp INTERFACE assimp)
 
 # STB
 
