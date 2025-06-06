@@ -88,6 +88,7 @@ set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(assimp)
 target_include_directories(Assimp INTERFACE ${assimp_SOURCE_DIR}/include)
+target_include_directories(Assimp INTERFACE ${assimp_BINARY_DIR}/include) # Include for assimp config
 
 # STB
 
