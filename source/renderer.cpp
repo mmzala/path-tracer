@@ -175,7 +175,7 @@ void Renderer::InitializeRenderTarget()
 void Renderer::InitializeCamera()
 {
     constexpr float fov = glm::radians(60.0f);
-    const float aspectRatio = static_cast<float>(_windowWidth) / static_cast<float>(_windowHeight);
+    const float aspectRatio = _windowWidth / static_cast<float>(_windowHeight);
 
     glm::mat4 projection = glm::perspectiveRH_ZO(fov, aspectRatio, 0.1f, 1000.0f);
     projection[1][1] *= -1;  // Inverting Y for Vulkan (not needed with perspectiveVK)
