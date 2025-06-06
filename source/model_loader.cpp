@@ -126,84 +126,66 @@ ResourceHandle<Material> ProcessMaterial(const aiMaterial* material, const std::
     return resources->Materials().Create(materialCreation);
 }
 
-Mesh ProcessMesh(const fastgltf::Asset& gltf, const fastgltf::Mesh& gltfMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
+Mesh ProcessMesh(const aiScene* scene, const aiMesh* aiMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
 {
     Mesh mesh {};
     mesh.firstIndex = indices.size();
+    size_t initialVertex = vertices.size();
 
-    for (const auto& primitive : gltfMesh.primitives)
+    if (aiMesh->HasFaces())
     {
-        size_t initialVertex = vertices.size();
+        // Using aiProcess_Triangulate, so we know that each face has 3 indices
+        mesh.indexCount = aiMesh->mNumFaces * 3;
+        indices.reserve(indices.size() + mesh.indexCount);
+        uint32_t indexOffset = 0;
 
-        if (primitive.indicesAccessor.has_value())
+        for (uint32_t i = 0; i < aiMesh->mNumFaces; ++i)
         {
-            const fastgltf::Accessor& indexAccessor = gltf.accessors[primitive.indicesAccessor.value()];
-            indices.reserve(indices.size() + indexAccessor.count);
-            mesh.indexCount += indexAccessor.count;
-
-            fastgltf::iterateAccessor<uint32_t>(gltf, indexAccessor,
-                [&](uint32_t idx)
-                {
-                    indices.push_back(idx + initialVertex);
-                });
-        }
-        else
-        {
-            spdlog::error("[GLTF] Primitive on mesh \"{}\" doesn't have any indices!", gltfMesh.name);
-        }
-
-        // Load positions
-        {
-            const fastgltf::Accessor& positionAccessor = gltf.accessors[primitive.findAttribute("POSITION")->accessorIndex];
-            vertices.resize(vertices.size() + positionAccessor.count);
-
-            fastgltf::iterateAccessorWithIndex<glm::vec3>(gltf, positionAccessor,
-                [&](glm::vec3 position, size_t index)
-                {
-                    vertices[initialVertex + index].position = position;
-                });
-        }
-
-        // load vertex normals
-        {
-            auto normals = primitive.findAttribute("NORMAL");
-            if (normals != primitive.attributes.end())
+            const aiFace face = aiMesh->mFaces[i];
+            for (uint32_t j = 0; j < face.mNumIndices; ++j)
             {
-                const fastgltf::Accessor& normalAccessor = gltf.accessors[normals->accessorIndex];
-                fastgltf::iterateAccessorWithIndex<glm::vec3>(gltf, normalAccessor,
-                    [&](glm::vec3 normal, size_t index)
-                    {
-                        vertices[initialVertex + index].normal = normal;
-                    });
+                indices[mesh.firstIndex + indexOffset] = initialVertex + face.mIndices[j];
+                indexOffset++;
             }
         }
+    }
+    else
+    {
+        spdlog::error("[MODEL LOADING] Mesh \"{}\" doesn't have any indices!", aiMesh->mName.C_Str());
+    }
 
-        // load UVs
-        {
-            auto uvs = primitive.findAttribute("TEXCOORD_0");
-            if (uvs != primitive.attributes.end())
-            {
-                const fastgltf::Accessor& uvAccessor = gltf.accessors[uvs->accessorIndex];
-                fastgltf::iterateAccessorWithIndex<glm::vec2>(gltf, uvAccessor,
-                    [&](glm::vec2 uv, size_t index)
-                    {
-                        vertices[initialVertex + index].texCoord = uv;
-                    });
-            }
-        }
+    // Positions
+    {
+        vertices.resize(vertices.size() + aiMesh->mNumVertices);
 
-        // Get material
-        if (primitive.materialIndex.has_value())
+        for (uint32_t i = 0; i < aiMesh->mNumVertices; ++i)
         {
-            if (mesh.material.IsNull())
-            {
-                mesh.material = materials[primitive.materialIndex.value()];
-            }
-            else
-            {
-                spdlog::error("[GLTF] Mesh [{}] uses multiple different materials. This is not supported!", gltfMesh.name);
-            }
+            vertices[initialVertex + i].position = glm::vec3(aiMesh->mVertices[i].x, aiMesh->mVertices[i].y, aiMesh->mVertices[i].z);
         }
+    }
+
+    // Normals
+    if (aiMesh->HasNormals())
+    {
+        for (uint32_t i = 0; i < aiMesh->mNumVertices; ++i)
+        {
+            vertices[initialVertex + i].normal = glm::vec3(aiMesh->mNormals[i].x, aiMesh->mNormals[i].y, aiMesh->mNormals[i].z);
+        }
+    }
+
+    // UVs
+    if (aiMesh->HasTextureCoords(0))
+    {
+        for (uint32_t i = 0; i < aiMesh->mNumVertices; ++i)
+        {
+            vertices[initialVertex + i].texCoord = glm::vec2(aiMesh->mTextureCoords[0][i].x, aiMesh->mTextureCoords[0][i].y);
+        }
+    }
+
+    // Material
+    if (aiMesh->mMaterialIndex < scene->mNumMaterials)
+    {
+        mesh.material = materials[aiMesh->mMaterialIndex]; // Order of materials is the same as assimp loads them, so we get the correct one from our vector with the same index
     }
 
     return mesh;
@@ -300,12 +282,13 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const aiScene* scene, const std
 
     // Process vertex and index data
     {
+        std::string sceneName = scene->mName.C_Str();
         model->verticesCount = vertices.size();
         model->indexCount = indices.size();
 
         // Staging buffers
         BufferCreation vertexStagingBufferCreation {};
-        vertexStagingBufferCreation.SetName(gltf.nodes[0].name + " - Vertex Staging Buffer")
+        vertexStagingBufferCreation.SetName(sceneName + " - Vertex Staging Buffer")
             .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
             .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
             .SetIsMappable(true)
@@ -314,7 +297,7 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const aiScene* scene, const std
         memcpy(vertexStagingBuffer.mappedPtr, vertices.data(), sizeof(Model::Vertex) * vertices.size());
 
         BufferCreation indexStagingBufferCreation {};
-        indexStagingBufferCreation.SetName(gltf.nodes[0].name + " - Index Staging Buffer")
+        indexStagingBufferCreation.SetName(sceneName + " - Index Staging Buffer")
             .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
             .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
             .SetIsMappable(true)
@@ -326,7 +309,7 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const aiScene* scene, const std
         vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
 
         BufferCreation vertexBufferCreation {};
-        vertexBufferCreation.SetName(gltf.nodes[0].name + " - Vertex Buffer")
+        vertexBufferCreation.SetName(sceneName + " - Vertex Buffer")
             .SetUsageFlags(vk::BufferUsageFlagBits::eVertexBuffer | bufferUsage)
             .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
             .SetIsMappable(false)
@@ -334,7 +317,7 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const aiScene* scene, const std
         model->vertexBuffer = std::make_unique<Buffer>(vertexBufferCreation, _vulkanContext);
 
         BufferCreation indexBufferCreation {};
-        indexBufferCreation.SetName(gltf.nodes[0].name + " - Index Buffer")
+        indexBufferCreation.SetName(sceneName + " - Index Buffer")
             .SetUsageFlags(vk::BufferUsageFlagBits::eIndexBuffer | bufferUsage)
             .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
             .SetIsMappable(false)
