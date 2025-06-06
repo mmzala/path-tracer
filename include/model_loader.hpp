@@ -1,13 +1,15 @@
 #pragma once
 #include "common.hpp"
 #include "resources/resource_manager.hpp"
-#include <fastgltf/core.hpp>
+#include <assimp/Importer.hpp>
 #include <glm/vec3.hpp>
 #include <glm/matrix.hpp>
 #include <optional>
+#include <unordered_map>
 
 class VulkanContext;
 class BindlessResources;
+struct aiScene;
 struct Buffer;
 struct Image;
 struct Material;
@@ -48,20 +50,21 @@ struct Model
     std::vector<ResourceHandle<Material>> materials {};
 };
 
-class GLTFLoader
+class ModelLoader
 {
 public:
-    GLTFLoader(const std::shared_ptr<BindlessResources>& bindlessResources, const std::shared_ptr<VulkanContext>& vulkanContext);
-    ~GLTFLoader() = default;
-    NON_COPYABLE(GLTFLoader);
-    NON_MOVABLE(GLTFLoader);
+    ModelLoader(const std::shared_ptr<BindlessResources>& bindlessResources, const std::shared_ptr<VulkanContext>& vulkanContext);
+    ~ModelLoader() = default;
+    NON_COPYABLE(ModelLoader);
+    NON_MOVABLE(ModelLoader);
 
     [[nodiscard]] std::shared_ptr<Model> LoadFromFile(std::string_view path);
 
 private:
-    [[nodiscard]] std::shared_ptr<Model> ProcessModel(const fastgltf::Asset& gltf, const std::string_view directory);
+    [[nodiscard]] std::shared_ptr<Model> ProcessModel(const aiScene* scene, const std::string_view directory);
 
+    Assimp::Importer _importer {};
+    std::unordered_map<std::string_view, ResourceHandle<Image>> _imageCache {};
     std::shared_ptr<VulkanContext> _vulkanContext;
     std::shared_ptr<BindlessResources> _bindlessResources;
-    fastgltf::Parser _parser;
 };

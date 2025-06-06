@@ -35,7 +35,7 @@ target_link_libraries(PathTracer
 		PUBLIC spdlog::spdlog
 		PUBLIC SDL3::SDL3-static
 		PUBLIC glm::glm
-		PUBLIC fastgltf::fastgltf
+		PUBLIC Assimp
 		PUBLIC STB
 )
 

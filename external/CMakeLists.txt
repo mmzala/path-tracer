@@ -70,17 +70,24 @@ FetchContent_MakeAvailable(GLM)
 # Guarantees GLM follows the same perspective convention as Vulkan
 target_compile_definitions(glm PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE PUBLIC GLM_ENABLE_EXPERIMENTAL)
 
-# FastGLTF
+# Assimp
 
+add_library(Assimp INTERFACE)
 FetchContent_Declare(
-        FastGLTF
-        GIT_REPOSITORY https://github.com/spnda/fastgltf.git
-        GIT_TAG main
+        assimp
+        GIT_REPOSITORY https://github.com/assimp/assimp.git
+        GIT_TAG v6.0.1
         GIT_SHALLOW TRUE
         GIT_PROGRESS TRUE
 )
 
-FetchContent_MakeAvailable(FastGLTF)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(assimp)
+target_include_directories(Assimp INTERFACE ${assimp_SOURCE_DIR}/include)
 
 # STB
 

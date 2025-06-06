@@ -1,5 +1,5 @@
 #include "bottom_level_acceleration_structure.hpp"
-#include "gltf_loader.hpp"
+#include "model_loader.hpp"
 #include "resources/bindless_resources.hpp"
 #include "single_time_commands.hpp"
 #include "vulkan_context.hpp"
