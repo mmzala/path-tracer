@@ -15,6 +15,7 @@ struct Material;
 
 struct Node
 {
+    std::string name {};
     const Node* parent = nullptr;
     glm::mat4 localMatrix {};
     std::vector<uint32_t> meshes {};

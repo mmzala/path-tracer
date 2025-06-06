@@ -8,6 +8,7 @@
 #include <spdlog/spdlog.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <assimp/GltfMaterial.h>
 #include <stb_image.h>
 
 ResourceHandle<Image> ProcessImage(const std::string_view localPath, const std::string_view directory, const std::shared_ptr<BindlessResources>& resources)
@@ -134,7 +135,7 @@ Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector
     {
         // Using aiProcess_Triangulate, so we know that each face has 3 indices
         mesh.indexCount = aiMesh->mNumFaces * 3;
-        indices.reserve(indices.size() + mesh.indexCount);
+        indices.resize(indices.size() + mesh.indexCount);
         uint32_t indexOffset = 0;
 
         for (uint32_t i = 0; i < aiMesh->mNumFaces; ++i)
@@ -191,9 +192,20 @@ Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector
 
 void ProcessNode(const aiNode* aiNode, const Node* parent, std::vector<Node>& nodes)
 {
+    static const auto aiMatrixToGlm = [](const aiMatrix4x4& from)
+    {
+        glm::mat4 to {};
+        to[0][0] = from.a1; to[1][0] = from.a2; to[2][0] = from.a3; to[3][0] = from.a4;
+        to[0][1] = from.b1; to[1][1] = from.b2; to[2][1] = from.b3; to[3][1] = from.b4;
+        to[0][2] = from.c1; to[1][2] = from.c2; to[2][2] = from.c3; to[3][2] = from.c4;
+        to[0][3] = from.d1; to[1][3] = from.d2; to[2][3] = from.d3; to[3][3] = from.d4;
+        return to;
+    };
+
     Node& node = nodes.emplace_back();
+    node.name = aiNode->mName.C_Str();
     node.parent = parent;
-    node.localMatrix = glm::make_mat4(&aiNode->mTransformation);
+    node.localMatrix = aiMatrixToGlm(aiNode->mTransformation);
 
     for (uint32_t i = 0; i < aiNode->mNumMeshes; ++i)
     {
@@ -206,9 +218,22 @@ void ProcessNode(const aiNode* aiNode, const Node* parent, std::vector<Node>& no
     }
 }
 
+size_t CountNodes(const aiNode* aiNode)
+{
+    size_t count = 1;
+    for (unsigned int i = 0; i < aiNode->mNumChildren; ++i)
+    {
+        count += CountNodes(aiNode->mChildren[i]);
+    }
+    return count;
+}
+
 std::vector<Node> ProcessNodes(const aiScene* aiScene)
 {
+    const size_t nodeCount = CountNodes(aiScene->mRootNode);
     std::vector<Node> nodes {};
+    nodes.reserve(nodeCount);
+
     ProcessNode(aiScene->mRootNode, nullptr, nodes);
     return nodes;
 }
@@ -228,8 +253,8 @@ glm::mat4 Node::GetWorldMatrix() const
 }
 
 ModelLoader::ModelLoader(const std::shared_ptr<BindlessResources>& bindlessResources, const std::shared_ptr<VulkanContext>& vulkanContext)
-    : _bindlessResources(bindlessResources)
-    , _vulkanContext(vulkanContext)
+    : _vulkanContext(vulkanContext)
+    , _bindlessResources(bindlessResources)
 {
 }
 
