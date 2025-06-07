@@ -201,3 +201,12 @@ void VkCopyBufferToBuffer(vk::CommandBuffer commandBuffer, vk::Buffer srcBuffer,
     copyRegion.size = size;
     commandBuffer.copyBuffer(srcBuffer, dstBuffer, 1, &copyRegion);
 }
+
+VkTransformMatrixKHR VkGLMToTransformMatrixKHR(const glm::mat4& matrix)
+{
+    // VkTransformMatrixKHR uses a row-major memory layout, while glm::mat4 uses a column-major memory layout
+    const glm::mat4 temp = glm::transpose(matrix);
+    VkTransformMatrixKHR out {};
+    memcpy(&out, &temp, sizeof(VkTransformMatrixKHR));
+    return out;
+}

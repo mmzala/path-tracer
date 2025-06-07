@@ -2,6 +2,7 @@
 #include "bottom_level_acceleration_structure.hpp"
 #include "resources/bindless_resources.hpp"
 #include "single_time_commands.hpp"
+#include "vk_common.hpp"
 #include "vulkan_context.hpp"
 
 TopLevelAccelerationStructure::TopLevelAccelerationStructure(const std::vector<BottomLevelAccelerationStructure>& blases, const std::shared_ptr<BindlessResources>& resources, const std::shared_ptr<VulkanContext>& vulkanContext)
@@ -21,9 +22,7 @@ void TopLevelAccelerationStructure::InitializeStructure(const std::vector<Bottom
     std::vector<vk::AccelerationStructureInstanceKHR> accelerationStructureInstances {};
     for (const auto& blas : blases)
     {
-        vk::TransformMatrixKHR transform {};
-        const glm::mat4 matrix = glm::transpose(blas.Transform()); // VkTransformMatrixKHR uses a row-major memory layout, while glm::mat4 uses a column-major memory layout
-        memcpy(&transform, &matrix, sizeof(vk::TransformMatrixKHR));
+        vk::TransformMatrixKHR transform = VkGLMToTransformMatrixKHR(blas.Transform());
 
         vk::AccelerationStructureInstanceKHR& accelerationStructureInstance = accelerationStructureInstances.emplace_back();
         accelerationStructureInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR; // vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable

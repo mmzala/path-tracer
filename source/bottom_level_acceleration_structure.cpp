@@ -2,6 +2,7 @@
 #include "model_loader.hpp"
 #include "resources/bindless_resources.hpp"
 #include "single_time_commands.hpp"
+#include "vk_common.hpp"
 #include "vulkan_context.hpp"
 #include <glm/glm.hpp>
 
@@ -42,8 +43,7 @@ void BottomLevelAccelerationStructure::InitializeTransformBuffer()
         }
 
         vk::TransformMatrixKHR& matrix = transformMatrices.emplace_back();
-        glm::mat4 transform = glm::transpose(node.GetWorldMatrix()); // VkTransformMatrixKHR uses a row-major memory layout, while glm::mat4 uses a column-major memory layout
-        memcpy(&matrix, &transform, sizeof(vk::TransformMatrixKHR));
+        matrix = VkGLMToTransformMatrixKHR(node.GetWorldMatrix());
     }
 
     // TODO: Upload to GPU friendly memory

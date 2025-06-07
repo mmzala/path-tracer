@@ -1,5 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
+#include <glm/mat4x4.hpp>
 #include "vulkan_context.hpp"
 
 constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
@@ -21,6 +22,7 @@ void VkTransitionImageLayout(vk::CommandBuffer commandBuffer, vk::Image image, v
 void VkCopyImageToImage(vk::CommandBuffer commandBuffer, vk::Image srcImage, vk::Image dstImage, vk::Extent2D srcSize, vk::Extent2D dstSize);
 void VkCopyBufferToImage(vk::CommandBuffer commandBuffer, vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
 void VkCopyBufferToBuffer(vk::CommandBuffer commandBuffer, vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size, uint32_t offset = 0);
+VkTransformMatrixKHR VkGLMToTransformMatrixKHR(const glm::mat4& matrix);
 
 template <typename T>
 static void VkNameObject(T object, std::string_view name, const std::shared_ptr<VulkanContext>& context)
