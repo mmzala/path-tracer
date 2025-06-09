@@ -264,7 +264,7 @@ Image::Image(const ImageCreation& creation, const std::shared_ptr<VulkanContext>
             VkTransitionImageLayout(commandBuffer, image, format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
             VkCopyBufferToImage(commandBuffer, stagingBuffer.buffer, image, creation.width, creation.height);
             VkTransitionImageLayout(commandBuffer, image, format, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal); });
-        commands.Submit();
+        commands.SubmitAndWait();
     }
 
     VkNameObject(image, creation.name, _vulkanContext);

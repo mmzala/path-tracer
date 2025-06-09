@@ -23,7 +23,7 @@ SingleTimeCommands::SingleTimeCommands(std::shared_ptr<VulkanContext> context)
 
 SingleTimeCommands::~SingleTimeCommands()
 {
-    Submit();
+    SubmitAndWait();
 
     _vulkanContext->Device().free(_vulkanContext->CommandPool(), _commandBuffer);
     _vulkanContext->Device().destroy(_fence);
@@ -34,7 +34,7 @@ void SingleTimeCommands::Record(const std::function<void(vk::CommandBuffer)>& co
     commands(_commandBuffer);
 }
 
-void SingleTimeCommands::Submit()
+void SingleTimeCommands::SubmitAndWait()
 {
     if (_submitted)
     {
@@ -48,6 +48,6 @@ void SingleTimeCommands::Submit()
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &_commandBuffer;
 
-    VkCheckResult(_vulkanContext->GraphicsQueue().submit(1, &submitInfo, _fence), "[VULKAN] Failed submitting one time buffer to queue!");
-    VkCheckResult(_vulkanContext->Device().waitForFences(1, &_fence, vk::True, std::numeric_limits<uint64_t>::max()), "[VULKAN] Failed waiting for fence!");
+    VkCheckResult(_vulkanContext->GraphicsQueue().submit(1, &submitInfo, _fence), "Failed submitting one time buffer to queue!");
+    VkCheckResult(_vulkanContext->Device().waitForFences(1, &_fence, vk::True, std::numeric_limits<uint64_t>::max()), "Failed waiting for fence!");
 }

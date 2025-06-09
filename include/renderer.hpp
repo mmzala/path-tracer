@@ -1,11 +1,11 @@
 #pragma once
 #include <memory>
 #include <vulkan/vulkan.hpp>
-#include <glm/vec3.hpp>
-#include <glm/vec2.hpp>
 #include <glm/mat4x4.hpp>
 #include "vk_common.hpp"
 #include "common.hpp"
+#include "model_loader.hpp"
+#include "bottom_level_acceleration_structure.hpp"
 
 struct VulkanInitInfo;
 struct Buffer;
@@ -28,15 +28,15 @@ public:
     void Render();
 
 private:
-    struct Vertex
-    {
-        glm::vec3 position;
-    };
-
     struct CameraUniformData
     {
         glm::mat4 viewInverse {};
         glm::mat4 projInverse {};
+    };
+
+    struct PushConstantData
+    {
+        uint32_t frameIndex {};
     };
 
     void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex);
@@ -44,9 +44,12 @@ private:
     void InitializeSynchronizationObjects();
     void InitializeRenderTarget();
 
+    void InitializeCamera();
     void InitializeDescriptorSets();
     void InitializePipeline();
     void InitializeShaderBindingTable();
+
+    void InitializeBLAS();
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     std::unique_ptr<SwapChain> _swapChain;
@@ -56,11 +59,12 @@ private:
     std::array<vk::Fence, MAX_FRAMES_IN_FLIGHT> _inFlightFences;
     std::unique_ptr<Image> _renderTarget;
 
-    uint32_t _currentResourcesFrame = 0;
+    uint32_t _renderedFrames = 0;
 
     std::unique_ptr<ModelLoader> _modelLoader;
     std::shared_ptr<BindlessResources> _bindlessResources;
 
+    std::vector<std::shared_ptr<Model>> _models {};
     std::vector<BottomLevelAccelerationStructure> _blases {};
     std::unique_ptr<TopLevelAccelerationStructure> _tlas;
 

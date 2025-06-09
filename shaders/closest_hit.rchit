@@ -6,6 +6,8 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
 #include "bindless.glsl"
+#include "ray.glsl"
+#include "sampling.glsl"
 
 struct Vertex
 {
@@ -17,6 +19,7 @@ struct Vertex
 struct Triangle
 {
 	Vertex vertices[3];
+	vec3 position;
 	vec3 normal;
 	vec2 texCoord;
 };
@@ -24,15 +27,11 @@ struct Triangle
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Vertices { Vertex vertices[]; };
 layout(buffer_reference, scalar) readonly buffer Indices { uint indices[]; };
 
-layout(location = 0) rayPayloadInEXT vec3 hitValue;
+layout(location = 0) rayPayloadInEXT HitPayload payload;
 hitAttributeEXT vec2 attribs;
 
-void main()
+Triangle UnpackGeometry(GeometryNode geometryNode)
 {
-    BLASInstance blasInstance = blasInstances[gl_InstanceCustomIndexEXT];
-    GeometryNode geometryNode = geometryNodes[blasInstance.firstGeometryIndex + gl_GeometryIndexEXT];
-    Material material = materials[nonuniformEXT(geometryNode.materialIndex)];
-
     Vertices vertices = Vertices(geometryNode.vertexBufferDeviceAddress);
     Indices indices = Indices(geometryNode.indexBufferDeviceAddress);
 
@@ -41,20 +40,47 @@ void main()
 
     for (uint i = 0; i < 3; ++i)
     {
-    	const uint offset = indices.indices[indexOffset + i];
+        const uint offset = indices.indices[indexOffset + i];
         triangle.vertices[i] = vertices.vertices[offset];
     }
 
     const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
-    triangle.normal = triangle.vertices[0].normal * barycentricCoords.x + triangle.vertices[1].normal * barycentricCoords.y + triangle.vertices[2].normal * barycentricCoords.z;
+    triangle.position = triangle.vertices[0].position * barycentricCoords.x + triangle.vertices[1].position * barycentricCoords.y + triangle.vertices[2].position * barycentricCoords.z;
+    triangle.normal = normalize(triangle.vertices[0].normal * barycentricCoords.x + triangle.vertices[1].normal * barycentricCoords.y + triangle.vertices[2].normal * barycentricCoords.z);
     triangle.texCoord = triangle.vertices[0].texCoord * barycentricCoords.x + triangle.vertices[1].texCoord * barycentricCoords.y + triangle.vertices[2].texCoord * barycentricCoords.z;
 
-    vec4 albedo = vec4(1.0);
+    return triangle;
+}
+
+void main()
+{
+    BLASInstance blasInstance = blasInstances[gl_InstanceCustomIndexEXT];
+    GeometryNode geometryNode = geometryNodes[blasInstance.firstGeometryIndex + gl_GeometryIndexEXT];
+    Material material = materials[nonuniformEXT(geometryNode.materialIndex)];
+    Triangle triangle = UnpackGeometry(geometryNode);
+
+    const vec3 worldPosition = vec3(gl_ObjectToWorldEXT * vec4(triangle.position, 1.0));
+    const vec3 worldNormal = normalize(vec3(triangle.normal * gl_WorldToObjectEXT));
+
+    // Pick a random direction from here and keep going.
+    vec3 tangent, bitangent;
+    CreateCoordinateSystem(worldNormal, tangent, bitangent);
+    vec3 rayOrigin = worldPosition;
+    vec3 rayDirection = SamplingHemisphere(payload.seed, tangent, bitangent, worldNormal);
+
+    const float cosTheta = dot(rayDirection, worldNormal);
+    // Probability density function of SamplingHemisphere choosing this rayDirection
+    const float directionProbability = cosTheta / PI;
+
+    vec4 albedo = material.albedoFactor;
     if (material.useAlbedoMap)
     {
-        albedo = pow(texture(textures[nonuniformEXT(material.albedoMapIndex)], triangle.texCoord), vec4(2.2));
+        albedo *= texture(textures[nonuniformEXT(material.albedoMapIndex)], triangle.texCoord);
     }
-    albedo *= material.albedoFactor;
+    vec3 BRDF = albedo.rgb / PI;
 
-    hitValue = pow(albedo.rgb, vec3(1.0 / 2.2));
+    payload.rayOrigin = rayOrigin;
+    payload.rayDirection = rayDirection;
+    payload.hitValue = material.emissiveFactor;
+    payload.weight = BRDF * cosTheta / directionProbability;
 }

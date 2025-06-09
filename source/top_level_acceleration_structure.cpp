@@ -2,6 +2,7 @@
 #include "bottom_level_acceleration_structure.hpp"
 #include "resources/bindless_resources.hpp"
 #include "single_time_commands.hpp"
+#include "vk_common.hpp"
 #include "vulkan_context.hpp"
 
 TopLevelAccelerationStructure::TopLevelAccelerationStructure(const std::vector<BottomLevelAccelerationStructure>& blases, const std::shared_ptr<BindlessResources>& resources, const std::shared_ptr<VulkanContext>& vulkanContext)
@@ -17,13 +18,11 @@ TopLevelAccelerationStructure::~TopLevelAccelerationStructure()
 
 void TopLevelAccelerationStructure::InitializeStructure(const std::vector<BottomLevelAccelerationStructure>& blases, const std::shared_ptr<BindlessResources>& resources)
 {
-    uint32_t firstGeometryNodeIndex = 0;
+    uint32_t geometryCount = 0;
     std::vector<vk::AccelerationStructureInstanceKHR> accelerationStructureInstances {};
     for (const auto& blas : blases)
     {
-        vk::TransformMatrixKHR transform {};
-        const glm::mat3x4 matrix = glm::mat3x4(glm::transpose(blas.Transform()));
-        memcpy(&transform, &matrix, sizeof(vk::TransformMatrixKHR));
+        vk::TransformMatrixKHR transform = VkGLMToTransformMatrixKHR(blas.Transform());
 
         vk::AccelerationStructureInstanceKHR& accelerationStructureInstance = accelerationStructureInstances.emplace_back();
         accelerationStructureInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR; // vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable
@@ -37,10 +36,10 @@ void TopLevelAccelerationStructure::InitializeStructure(const std::vector<Bottom
         accelerationStructureInstance.accelerationStructureReference = _vulkanContext->Device().getAccelerationStructureAddressKHR(blasDeviceAddress, _vulkanContext->Dldi());
 
         BLASInstanceCreation blasInstanceCreation {};
-        blasInstanceCreation.firstGeometryIndex = firstGeometryNodeIndex;
+        blasInstanceCreation.firstGeometryIndex = geometryCount;
         resources->BLASInstances().Create(blasInstanceCreation);
 
-        firstGeometryNodeIndex += blas.GeometryCount();
+        geometryCount++;
     }
 
     BufferCreation instancesBufferCreation {};
@@ -110,5 +109,5 @@ void TopLevelAccelerationStructure::InitializeStructure(const std::vector<Bottom
     SingleTimeCommands singleTimeCommands { _vulkanContext };
     singleTimeCommands.Record([&](vk::CommandBuffer commandBuffer)
         { commandBuffer.buildAccelerationStructuresKHR(1, &buildGeometryInfo, pBuildRangeInfos.data(), _vulkanContext->Dldi()); });
-    singleTimeCommands.Submit();
+    singleTimeCommands.SubmitAndWait();
 }

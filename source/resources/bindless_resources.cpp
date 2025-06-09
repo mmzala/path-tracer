@@ -170,7 +170,7 @@ void BindlessResources::UploadGeometryNodes()
     SingleTimeCommands commands(_vulkanContext);
     commands.Record([&](vk::CommandBuffer commandBuffer)
         { VkCopyBufferToBuffer(commandBuffer, stagingBuffer.buffer, _geometryNodeBuffer->buffer, bufferSize); });
-    commands.Submit();
+    commands.SubmitAndWait();
 
     vk::DescriptorBufferInfo bufferInfo {};
     bufferInfo.buffer = _geometryNodeBuffer->buffer;
@@ -214,7 +214,7 @@ void BindlessResources::UploadBLASInstances()
     SingleTimeCommands commands(_vulkanContext);
     commands.Record([&](vk::CommandBuffer commandBuffer)
         { VkCopyBufferToBuffer(commandBuffer, stagingBuffer.buffer, _blasInstanceBuffer->buffer, bufferSize); });
-    commands.Submit();
+    commands.SubmitAndWait();
 
     vk::DescriptorBufferInfo bufferInfo {};
     bufferInfo.buffer = _blasInstanceBuffer->buffer;
