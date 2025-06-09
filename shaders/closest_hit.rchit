@@ -81,6 +81,6 @@ void main()
 
     payload.rayOrigin = rayOrigin;
     payload.rayDirection = rayDirection;
-    payload.hitValue = material.emissiveFactor * 30.0;
+    payload.hitValue = material.emissiveFactor;
     payload.weight = BRDF * cosTheta / directionProbability;
 }

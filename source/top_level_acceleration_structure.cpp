@@ -18,7 +18,7 @@ TopLevelAccelerationStructure::~TopLevelAccelerationStructure()
 
 void TopLevelAccelerationStructure::InitializeStructure(const std::vector<BottomLevelAccelerationStructure>& blases, const std::shared_ptr<BindlessResources>& resources)
 {
-    uint32_t firstGeometryNodeIndex = 0;
+    uint32_t geometryCount = 0;
     std::vector<vk::AccelerationStructureInstanceKHR> accelerationStructureInstances {};
     for (const auto& blas : blases)
     {
@@ -36,10 +36,10 @@ void TopLevelAccelerationStructure::InitializeStructure(const std::vector<Bottom
         accelerationStructureInstance.accelerationStructureReference = _vulkanContext->Device().getAccelerationStructureAddressKHR(blasDeviceAddress, _vulkanContext->Dldi());
 
         BLASInstanceCreation blasInstanceCreation {};
-        blasInstanceCreation.firstGeometryIndex = firstGeometryNodeIndex;
+        blasInstanceCreation.firstGeometryIndex = geometryCount;
         resources->BLASInstances().Create(blasInstanceCreation);
 
-        firstGeometryNodeIndex += blas.GeometryCount();
+        geometryCount++;
     }
 
     BufferCreation instancesBufferCreation {};
@@ -109,5 +109,5 @@ void TopLevelAccelerationStructure::InitializeStructure(const std::vector<Bottom
     SingleTimeCommands singleTimeCommands { _vulkanContext };
     singleTimeCommands.Record([&](vk::CommandBuffer commandBuffer)
         { commandBuffer.buildAccelerationStructuresKHR(1, &buildGeometryInfo, pBuildRangeInfos.data(), _vulkanContext->Dldi()); });
-    singleTimeCommands.Submit();
+    singleTimeCommands.SubmitAndWait();
 }

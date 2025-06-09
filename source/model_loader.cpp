@@ -128,8 +128,8 @@ ResourceHandle<Material> ProcessMaterial(const aiMaterial* aiMaterial, const std
 Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
 {
     Mesh mesh {};
-    mesh.firstIndex = indices.size();
-    size_t initialVertex = vertices.size();
+    mesh.firstIndex = static_cast<uint32_t>(indices.size());
+    mesh.firstVertex = static_cast<uint32_t>(vertices.size());
 
     if (aiMesh->HasFaces())
     {
@@ -143,7 +143,7 @@ Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector
             const aiFace face = aiMesh->mFaces[i];
             for (uint32_t j = 0; j < face.mNumIndices; ++j)
             {
-                indices[mesh.firstIndex + indexOffset] = initialVertex + face.mIndices[j];
+                indices[mesh.firstIndex + indexOffset] = mesh.firstVertex + face.mIndices[j];
                 indexOffset++;
             }
         }
@@ -159,7 +159,7 @@ Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector
 
         for (uint32_t i = 0; i < aiMesh->mNumVertices; ++i)
         {
-            vertices[initialVertex + i].position = glm::vec3(aiMesh->mVertices[i].x, aiMesh->mVertices[i].y, aiMesh->mVertices[i].z);
+            vertices[mesh.firstVertex + i].position = glm::vec3(aiMesh->mVertices[i].x, aiMesh->mVertices[i].y, aiMesh->mVertices[i].z);
         }
     }
 
@@ -168,7 +168,7 @@ Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector
     {
         for (uint32_t i = 0; i < aiMesh->mNumVertices; ++i)
         {
-            vertices[initialVertex + i].normal = glm::vec3(aiMesh->mNormals[i].x, aiMesh->mNormals[i].y, aiMesh->mNormals[i].z);
+            vertices[mesh.firstVertex + i].normal = glm::vec3(aiMesh->mNormals[i].x, aiMesh->mNormals[i].y, aiMesh->mNormals[i].z);
         }
     }
 
@@ -177,7 +177,7 @@ Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector
     {
         for (uint32_t i = 0; i < aiMesh->mNumVertices; ++i)
         {
-            vertices[initialVertex + i].texCoord = glm::vec2(aiMesh->mTextureCoords[0][i].x, aiMesh->mTextureCoords[0][i].y);
+            vertices[mesh.firstVertex + i].texCoord = glm::vec2(aiMesh->mTextureCoords[0][i].x, aiMesh->mTextureCoords[0][i].y);
         }
     }
 
@@ -353,7 +353,7 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const aiScene* aiScene, const s
             {
                 VkCopyBufferToBuffer(commandBuffer, vertexStagingBuffer.buffer, model->vertexBuffer->buffer, sizeof(Model::Vertex) * vertices.size());
                 VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, model->indexBuffer->buffer, sizeof(uint32_t) * indices.size()); });
-        commands.Submit();
+        commands.SubmitAndWait();
     }
 
     model->nodes = ProcessNodes(aiScene);

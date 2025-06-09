@@ -1,5 +1,6 @@
 #pragma once
 #include "acceleration_structure.hpp"
+#include "resources/gpu_resources.hpp"
 #include "common.hpp"
 #include <glm/mat4x4.hpp>
 
@@ -8,10 +9,18 @@ class BindlessResources;
 struct Model;
 struct Buffer;
 
+struct BLASInput
+{
+    glm::mat4 transform {};
+    GeometryNodeCreation node {};
+    vk::AccelerationStructureGeometryKHR geometry {};
+    vk::AccelerationStructureBuildRangeInfoKHR info {};
+};
+
 class BottomLevelAccelerationStructure : public AccelerationStructure
 {
 public:
-    BottomLevelAccelerationStructure(const std::shared_ptr<Model>& model, const std::shared_ptr<BindlessResources>& resources, const std::shared_ptr<VulkanContext>& vulkanContext, const glm::mat4& transform = glm::mat4(1.0f));
+    BottomLevelAccelerationStructure(const BLASInput& input, const std::shared_ptr<BindlessResources>& resources, const std::shared_ptr<VulkanContext>& vulkanContext);
     ~BottomLevelAccelerationStructure();
     BottomLevelAccelerationStructure(BottomLevelAccelerationStructure&& other) noexcept;
     BottomLevelAccelerationStructure& operator=(BottomLevelAccelerationStructure&& other) = delete;
@@ -19,17 +28,10 @@ public:
 
     [[nodiscard]] vk::AccelerationStructureKHR Structure() const { return _vkStructure; }
     [[nodiscard]] const glm::mat4& Transform() const { return _transform; }
-    [[nodiscard]] uint32_t GeometryCount() const { return _geometryCount; }
 
 private:
-    void InitializeTransformBuffer();
-    void InitializeStructure(const std::shared_ptr<BindlessResources>& resources);
+    void InitializeStructure(const BLASInput& input);
 
     glm::mat4 _transform {};
-    uint32_t _geometryCount {};
-
-    std::shared_ptr<Model> _model;
-    std::unique_ptr<Buffer> _transformBuffer;
-
     std::shared_ptr<VulkanContext> _vulkanContext;
 };

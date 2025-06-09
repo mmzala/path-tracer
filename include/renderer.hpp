@@ -1,11 +1,11 @@
 #pragma once
 #include <memory>
 #include <vulkan/vulkan.hpp>
-#include <glm/vec3.hpp>
-#include <glm/vec2.hpp>
 #include <glm/mat4x4.hpp>
 #include "vk_common.hpp"
 #include "common.hpp"
+#include "model_loader.hpp"
+#include "bottom_level_acceleration_structure.hpp"
 
 struct VulkanInitInfo;
 struct Buffer;
@@ -49,6 +49,8 @@ private:
     void InitializePipeline();
     void InitializeShaderBindingTable();
 
+    void InitializeBLAS();
+
     std::shared_ptr<VulkanContext> _vulkanContext;
     std::unique_ptr<SwapChain> _swapChain;
     std::array<vk::CommandBuffer, MAX_FRAMES_IN_FLIGHT> _commandBuffers;
@@ -62,6 +64,7 @@ private:
     std::unique_ptr<ModelLoader> _modelLoader;
     std::shared_ptr<BindlessResources> _bindlessResources;
 
+    std::vector<std::shared_ptr<Model>> _models {};
     std::vector<BottomLevelAccelerationStructure> _blases {};
     std::unique_ptr<TopLevelAccelerationStructure> _tlas;
 

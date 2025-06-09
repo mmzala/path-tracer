@@ -1,5 +1,4 @@
 #include "renderer.hpp"
-#include "bottom_level_acceleration_structure.hpp"
 #include "model_loader.hpp"
 #include "resources/bindless_resources.hpp"
 #include "shader.hpp"
@@ -7,7 +6,6 @@
 #include "swap_chain.hpp"
 #include "top_level_acceleration_structure.hpp"
 #include "vulkan_context.hpp"
-
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
@@ -28,12 +26,11 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     const std::vector<std::string> scene = {
         "assets/cornell/CornellBox-Original.gltf",
     };
-    _blases.reserve(scene.size());
     for (const auto& modelPath : scene)
     {
-        std::shared_ptr<Model> model = _modelLoader->LoadFromFile(modelPath);
-        _blases.emplace_back(model, _bindlessResources, _vulkanContext);
+        _models.push_back(_modelLoader->LoadFromFile(modelPath));
     }
+    InitializeBLAS();
 
     _tlas = std::make_unique<TopLevelAccelerationStructure>(_blases, _bindlessResources, _vulkanContext);
     _bindlessResources->UpdateDescriptorSet();
@@ -415,4 +412,59 @@ void Renderer::InitializeShaderBindingTable()
     _hitAddressRegion.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_hitSBT->buffer);
     _hitAddressRegion.stride = handleSizeAligned;
     _hitAddressRegion.size = handleSizeAligned;
+}
+
+BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& node, const Mesh& mesh, const std::shared_ptr<VulkanContext>& vulkanContext)
+{
+    BLASInput output {};
+    output.transform = node.GetWorldMatrix();
+
+    vk::DeviceOrHostAddressConstKHR vertexBufferDeviceAddress {};
+    vk::DeviceOrHostAddressConstKHR indexBufferDeviceAddress {};
+    vertexBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->vertexBuffer->buffer);
+    indexBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->indexBuffer->buffer) + mesh.firstIndex * sizeof(uint32_t);
+
+    vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData {};
+    trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
+    trianglesData.vertexData = vertexBufferDeviceAddress;
+    trianglesData.maxVertex = model->verticesCount - 1;
+    trianglesData.vertexStride = sizeof(Model::Vertex);
+    trianglesData.indexType = vk::IndexType::eUint32;
+    trianglesData.indexData = indexBufferDeviceAddress;
+    trianglesData.transformData = {}; // Identity transform
+
+    vk::AccelerationStructureGeometryKHR& accelerationStructureGeometry = output.geometry;
+    accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
+    accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eTriangles;
+    accelerationStructureGeometry.geometry.triangles = trianglesData;
+
+    uint32_t primitiveCount = mesh.indexCount / 3;
+
+    vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = output.info;
+    buildRangeInfo.primitiveCount = primitiveCount;
+    buildRangeInfo.primitiveOffset = 0;
+    buildRangeInfo.firstVertex = 0;
+    buildRangeInfo.transformOffset = 0;
+
+    GeometryNodeCreation& nodeCreation = output.node;
+    nodeCreation.vertexBufferDeviceAddress = vertexBufferDeviceAddress.deviceAddress;
+    nodeCreation.indexBufferDeviceAddress = indexBufferDeviceAddress.deviceAddress;
+    nodeCreation.material = mesh.material;
+
+    return output;
+}
+
+void Renderer::InitializeBLAS()
+{
+    for (const auto& model : _models)
+    {
+        for (const auto& node : model->nodes)
+        {
+            for (const auto mesh : node.meshes)
+            {
+                BLASInput input = InitializeBLASInput(model, node, model->meshes[mesh], _vulkanContext);
+                _blases.emplace_back(input, _bindlessResources, _vulkanContext);
+            }
+        }
+    }
 }
