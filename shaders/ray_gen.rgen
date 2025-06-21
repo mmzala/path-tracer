@@ -32,6 +32,7 @@ void main()
 
     // TODO: More samples == less luminance?
     const uint samples = 25;
+    const uint depth = 20;
     const float hitStrength = 2.5;
     vec3 result = vec3(0);
 
@@ -49,7 +50,7 @@ void main()
         vec3 hitValue  = vec3(0);
         vec3 currentWeight = vec3(1);
 
-        for(; payload.depth < 10; ++payload.depth)
+        for(; payload.depth < depth; ++payload.depth)
         {
             traceRayEXT(topLevelAS,             // acceleration structure
                         rayFlags,               // rayFlags
