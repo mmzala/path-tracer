@@ -431,6 +431,9 @@ Material::Material(const MaterialCreation& creation)
     normalScale = creation.normalScale;
     occlusionStrength = creation.occlusionStrength;
     emissiveFactor = creation.emissiveFactor;
+
+    transparency = creation.transparency;
+    ior = creation.ior;
 }
 
 GeometryNode::GeometryNode(const GeometryNodeCreation& creation)

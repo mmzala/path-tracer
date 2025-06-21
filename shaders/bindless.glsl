@@ -24,6 +24,8 @@ struct Material
     uint occlusionMapIndex;
 
     uint emissiveMapIndex;
+    float transparency;
+    float ior;
 };
 layout (std140, set = 0, binding = 1) uniform Materials
 {

@@ -132,6 +132,9 @@ struct MaterialCreation
     glm::vec3 emissiveFactor { 0.0f };
     uint32_t emissiveUVChannel = 0;
 
+    float transparency = 0.0f;
+    float ior = 1.5f;
+
     MaterialCreation& SetAlbedoMap(ResourceHandle<Image> albedoMap);
     MaterialCreation& SetAlbedoFactor(const glm::vec4& albedoFactor);
     MaterialCreation& SetAlbedoUVChannel(uint32_t albedoUVChannel);
@@ -179,7 +182,9 @@ struct Material
     uint32_t occlusionMapIndex = NULL_RESOURCE_INDEX_VALUE;
 
     uint32_t emissiveMapIndex = NULL_RESOURCE_INDEX_VALUE;
-    glm::vec3 _PADDING_{};
+    float transparency = 0.0f;
+    float ior = 1.5f;
+    uint32_t _PADDING_{};
 };
 
 struct GeometryNodeCreation

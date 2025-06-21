@@ -26,7 +26,7 @@ ResourceHandle<Image> ProcessImage(const std::string_view localPath, const std::
 
     if (!stbiData)
     {
-        spdlog::error("[GLTF] Failed to load data from image [{}] from path [{}]", imageCreation.name, fullPath);
+        spdlog::error("[MODEL LOADING] Failed to load data from image [{}] from path [{}]", imageCreation.name, fullPath);
         return ResourceHandle<Image> {};
     }
 
@@ -120,6 +120,16 @@ ResourceHandle<Material> ProcessMaterial(const aiMaterial* aiMaterial, const std
     if (aiMaterial->Get(AI_MATKEY_GLTF_TEXTURE_SCALE(aiTextureType_AMBIENT_OCCLUSION, 0), factor) == AI_SUCCESS)
     {
         materialCreation.occlusionStrength = factor;
+    }
+
+    if (aiMaterial->Get(AI_MATKEY_TRANSMISSION_FACTOR, factor) == AI_SUCCESS)
+    {
+        materialCreation.transparency = factor;
+    }
+
+    if (aiMaterial->Get(AI_MATKEY_REFRACTI, factor) == AI_SUCCESS)
+    {
+        materialCreation.ior = factor;
     }
 
     return resources->Materials().Create(materialCreation);
