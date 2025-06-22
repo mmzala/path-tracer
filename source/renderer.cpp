@@ -24,7 +24,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     _modelLoader = std::make_unique<ModelLoader>(_bindlessResources, _vulkanContext);
 
     const std::vector<std::string> scene = {
-        "assets/cornell/CornellBox-Original.gltf",
+        "assets/cornell/CornellBox-GlassSphere.gltf",
     };
     for (const auto& modelPath : scene)
     {
